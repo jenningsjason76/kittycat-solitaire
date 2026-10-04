@@ -1,5 +1,5 @@
 // Keeps the game available offline. Raise VERSION when you replace index.html.
-const VERSION = "v1";
+const VERSION = "v2";
 const CORE = `kittycat-flat-${VERSION}`;
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CORE).then((c) => c.addAll(SHELL))); });
