@@ -1,0 +1,26 @@
+{
+  "effects": {
+    "place": [
+      "place_1.wav",
+      "place_2.wav",
+      "place_3.wav",
+      "place_4.wav"
+    ],
+    "slide": [
+      "slide_1.wav",
+      "slide_2.wav",
+      "slide_3.wav",
+      "slide_4.wav"
+    ],
+    "tick": [
+      "tick.wav"
+    ],
+    "win": [
+      "win.wav"
+    ]
+  },
+  "music": [
+    "music_1.mp3",
+    "music_2.mp3"
+  ]
+}

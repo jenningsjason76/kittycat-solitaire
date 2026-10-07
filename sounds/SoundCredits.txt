@@ -1,0 +1,19 @@
+SOUND AND MUSIC CREDITS
+All items below are released under CC0 1.0 (public domain). Credit is not required but is given with thanks.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+SOUND EFFECTS (Kenney, kenney.nl)
+- Card place sounds (place_1 to place_4): "Casino Audio" by Kenney Vleugels, CC0. Files card-place-1 to card-place-4.
+- Card draw sounds (slide_1 to slide_4): "Casino Audio" by Kenney Vleugels, CC0. Files card-slide-1 to card-slide-4.
+- Lazy-move tick (tick): "Interface Sounds" by Kenney, CC0. File tick_001.
+- Win jingle (win): "Music Jingles" by Kenney Vleugels, CC0. File jingles_STEEL02.
+
+MUSIC
+- "First Light Particles" by Yoiyami, CC0.
+  https://opengameart.org/content/first-light-particles-%E2%80%93-cc0-atmospheric-pianoambient-track
+- "Vaporware" (Calm Piano 1) by The Cynic Project (cynicmusic), CC0.
+  https://opengameart.org/content/calm-piano-1-vaporware
+
+CHANGES MADE FOR THIS APP
+Sound effects were trimmed, faded at the ends, level-matched and converted to WAV.
+Music was level-matched, given a fade in and fade out, and converted to MP3.

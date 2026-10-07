@@ -1,0 +1,6 @@
+.DS_Store
+dist/
+dist-hosted/
+node_modules/
+__pycache__/
+*.pyc

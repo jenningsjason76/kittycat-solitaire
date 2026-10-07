@@ -1,0 +1,5 @@
+Card artwork: "English pattern playing cards deck PLUS CC0" (Wikimedia Commons), CC0 / public domain.
+Assembled by Loren Osborn (2024), based on a deck by Guy Vandegrift; most cards by Dmitry Fomin.
+Source: https://commons.wikimedia.org/wiki/File:English_pattern_playing_cards_deck_PLUS_CC0.svg
+Changes made for this app: cropped into single images; the corner numbers were redrawn about twice as large (rank and suit from the original art).
+CC0 requires no credit; this note is a courtesy.
