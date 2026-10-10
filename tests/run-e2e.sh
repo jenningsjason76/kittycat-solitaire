@@ -8,7 +8,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null' EXIT
 sleep 1
-ALL="feedback_settings_stats notes cat deadend drag drag_only grace motion victory audio"
+ALL="feedback_settings_stats notes cat deadend drag drag_only grace motion victory moves update audio"
 LIST="${*:-$ALL}"
 fail=0
 for name in $LIST; do

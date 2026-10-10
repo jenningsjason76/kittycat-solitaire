@@ -2,7 +2,9 @@
 
 ## State
 - Web app: complete through "Design v2" (felt and light, paper cards, icons, serif and rounded type, card motion, four victory sequences, win card, dead-end card with progress ring, "Go back to it" and "Try this deal again", cat on end cards, settings for Light, Motion, Victory, Cat).
-- Tests: 17 node tests pass; the browser tests (cat, notes, deadend, drag, drag_only, grace, motion, victory, audio, feedback_settings_stats) pass with no console errors.
+- Also done: corner numbers made heavier (R=4 stroke boost) and a menu item "Any moves left?" with a "Show me one" button and a "No more moves." end card.
+- Updates: the app asks for a new version when reopened, on reconnect and hourly; Settings > About > Version shows the installed version. The copy already installed on her phone predates this, so its first update may need a swipe-away and reopen.
+- Tests: 23 node tests pass; the browser tests (cat, notes, deadend, drag, drag_only, grace, motion, victory, moves, update, audio, feedback_settings_stats) pass with no console errors.
 - Not confirmed: whether the latest version has been pushed to GitHub. Check `git log --oneline -3` and the live site.
 - iPhone app (separate Xcode project): has drag-only default, larger card numbers, the narrow coach rule, Tip labels, quiet repeats, the dead-end prompt and the 6-second undo (6 files from `KittyCatSolitaire-Update4.zip`, never compiled). It lacks all of Design v2.
 

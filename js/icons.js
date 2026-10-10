@@ -8,6 +8,7 @@ const P = {
   list: '<path d="M9 7h10M9 12h10M9 17h10"/><circle cx="5" cy="7" r=".9"/><circle cx="5" cy="12" r=".9"/><circle cx="5" cy="17" r=".9"/>',
   bars: '<path d="M6 19V11M12 19V5M18 19v-6"/>',
   sliders: '<path d="M5 8h8M17 8h2M5 16h2M11 16h8"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/>',
+  moves: '<path d="M6 8h11l-3-3M18 16H7l3 3"/>',
   paw: '<ellipse cx="12" cy="15.5" rx="4.6" ry="3.7"/><ellipse cx="6.6" cy="10.4" rx="1.7" ry="2.2"/><ellipse cx="9.8" cy="7.2" rx="1.8" ry="2.4"/><ellipse cx="14.2" cy="7.2" rx="1.8" ry="2.4"/><ellipse cx="17.4" cy="10.4" rx="1.7" ry="2.2"/>',
 };
 

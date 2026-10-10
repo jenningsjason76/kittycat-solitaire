@@ -13,7 +13,7 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 - `engine.js` rules, scoring, `stateKey`, `boardKey`. `solver.js` + `worker.js` + `solver-client.js` DFS solver (winnable deals, win/lost proofs).
 - `critic.js` the coach's rules. `text.js` the wording. `store.js` `GameController`: the only owner of game state (undo, dead ends, replay, autosave).
 - `board.js` renders cards, drag, and motion (FLIP flights, flips, deal). `main.js` bar, banner, end cards, cat state. `dialogs.js` settings, stats, summary.
-- `victory.js` four victory sequences. `cat.js` the cat SVG and states. `icons.js` line icons. `audio.js`, `settings.js`, `stats.js`, `storage.js`, `assets.js`.
+- `solver.js` also has `findProgress`. `victory.js` four victory sequences. `cat.js` the cat SVG and states. `icons.js` line icons. `audio.js`, `settings.js`, `stats.js`, `storage.js`, `assets.js`.
 - `css/styles.css` (the "Design v2" block at the end overrides the older look), `css/textures.css`, `sw.js` (offline cache), `cards/` and `sounds/` (CC0; keep the CREDITS files).
 - Tests poke `window.kittycat` (`ctl`, `settings`, `stats`, `fx`).
 
@@ -23,6 +23,9 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 - Undo: flagged moves, plus any move for 6 seconds. "Unlimited" is a setting.
 - Dead end: after two stock passes with no board change, ask the solver (budget 120000 nodes draw 1, 50000 draw 3). Show "No win from here" only on proof.
 - Cat appears on win and end cards by default. No on-table companion by default, no paw badge cue.
+- "Any moves left?" (menu): breadth-first search for ANY way to make progress (a card to a foundation, or a face-down card turned over), including drawing and shuffling columns (`findProgress` in `solver.js`, budget 30000 nodes). `none` shows the "No more moves." card. It is different from the dead-end prompt, which needs a solver proof that the deal cannot be won; a lost deal can still have moves.
+- Updates: a home-screen app on iPhone is frozen and resumed, so the page calls `reg.update()` on return to the app, on reconnect and hourly (`main.js`). Settings > About > Version shows the cache version (`kittycat-core-<stamp>`); `publish.sh` prints the same stamp. Never tell anyone to delete and re-add the home-screen icon: it can erase saved games and stats (IndexedDB).
+- Card corner numbers are large and heavy (rebuild with `tools/cards/`, see its README).
 - Look: moss felt, lamp gold, paper cards, system serif headlines, system rounded sans. Motion default Calm. Victory: random among four, never the same twice in a row.
 
 ## Rules of the road

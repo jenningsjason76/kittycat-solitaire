@@ -6,7 +6,7 @@ import { GameAudio } from './audio.js';
 import { GameController } from './store.js';
 import { Board } from './board.js';
 import { message } from './text.js';
-import { openSettings, openStats, openSummary, closeDialog } from './dialogs.js';
+import { openMovesCheck, openSettings, openStats, openSummary, closeDialog } from './dialogs.js';
 import { requestPersistence } from './storage.js';
 import { isWon } from './engine.js';
 import { catHTML, setCatState } from './cat.js';
@@ -122,8 +122,10 @@ function defeatCard(box, dead) {
     t.append(back); box.append(t);
   }
   if (dead) box.append(mk('div', 'muted', 'A check of every remaining move found no way to win.'));
+  else if (ctl.outOfMoves) box.append(mk('div', 'muted', 'A check of every possible move found nothing left to play.'));
   const row = mk('div', 'row');
   if (dead) { const keep = mk('button', 'btn', 'Keep playing'); keep.onclick = () => ctl.dismissDeadEnd(); row.append(keep); }
+  else if (ctl.outOfMoves) { const keep = mk('button', 'btn', 'Keep playing'); keep.onclick = () => ctl.dismissOutOfMoves(); row.append(keep); }
   else { const d = mk('button', 'btn', 'See the game'); d.onclick = () => openSummary(ctx); row.append(d); }
   const again = mk('button', 'btn', 'Try this deal again'); again.onclick = () => ctl.replayDeal();
   const g = mk('button', 'btn primary', 'New game'); g.onclick = () => ctl.newGame();
@@ -132,7 +134,7 @@ function defeatCard(box, dead) {
 
 function renderOverlay() {
   const o = $('overlay');
-  const won = isWon(ctl.state), stuck = ctl.isStuck, dead = !!ctl.deadEnd;
+  const won = isWon(ctl.state), stuck = ctl.isStuck || ctl.outOfMoves, dead = !!ctl.deadEnd;
   if (!won) victory = 'idle';
   if (won && victory === 'idle') {
     victory = 'playing';
@@ -181,7 +183,7 @@ function toggleMenu() {
   const m = $('menu');
   if (!m.hidden) { m.hidden = true; return; }
   m.replaceChildren();
-  const items = [['plus', 'New game', requestNew], ['list', 'Game summary', () => openSummary(ctx)], ['bars', 'Stats and history', () => openStats(ctx)], ['sliders', 'Settings', () => openSettings(ctx)]];
+  const items = [['plus', 'New game', requestNew], ['moves', 'Any moves left?', () => openMovesCheck(ctx)], ['list', 'Game summary', () => openSummary(ctx)], ['bars', 'Stats and history', () => openStats(ctx)], ['sliders', 'Settings', () => openSettings(ctx)]];
   for (const [ic, label, fn] of items) {
     const b = mk('button', ''); b.innerHTML = icon(ic, 20) + '<span>' + label + '</span>'; b.setAttribute('role', 'menuitem');
     b.onclick = () => { m.hidden = true; fn(); };
@@ -239,6 +241,12 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         const w = reg.installing;
         if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) ready(w); });
       });
+      // An iPhone keeps a home-screen app frozen and resumes it, so the browser may not look for a new version by itself.
+      // Ask on every return to the app, when the connection comes back, and every hour while it is open.
+      const check = () => { reg.update().catch(() => {}); };
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+      window.addEventListener('online', check);
+      setInterval(check, 60 * 60 * 1000);
       // Reload after an update, but not on the very first visit (when the worker first takes control).
       const hadController = !!navigator.serviceWorker.controller;
       let reloaded = false;

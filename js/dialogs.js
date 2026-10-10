@@ -30,6 +30,27 @@ function open(title, build) {
 
 export function closeDialog() { const d = document.getElementById('dlg'); if (d.open) d.close(); }
 
+// ---------- any moves left? ----------
+
+export async function openMovesCheck(ctx) {
+  const ctl = ctx.ctl;
+  open('Any moves left?', (body) => { body.append(h('p', '', 'Checking every possible move…')); });
+  const r = await ctl.checkMoves();
+  const d = document.getElementById('dlg');
+  if (!r || !d.open) { closeDialog(); return; }                       // the board changed while checking
+  if (r.result === 'none') { closeDialog(); ctl.markOutOfMoves(); return; }   // the end card says so
+  open('Any moves left?', (body) => {
+    body.append(h('p', '', r.result === 'now' ? 'Yes. There is still a move on the board.'
+      : r.result === 'later' ? 'Not right now, but turning over the stock brings a move.'
+      : 'The check was cut short, so I cannot be sure. There may still be moves.'));
+    if (ctl.winnability === 'unwinnable' && r.result !== 'unknown') body.append(h('p', 'note', 'This deal can no longer be won, but you can keep playing it.'));
+    const acts = h('div', 'actions');
+    if (r.first) { const show = h('button', 'btn', 'Show me one'); show.onclick = () => { closeDialog(); ctl.showMove(r.first); }; acts.append(show); }
+    const ok = h('button', 'btn primary', 'Keep playing'); ok.onclick = closeDialog; acts.append(ok);
+    body.append(acts);
+  });
+}
+
 // ---------- settings ----------
 
 function section(body, title) { const s = h('section'); s.append(h('h3', '', title)); body.append(s); return s; }
@@ -111,6 +132,11 @@ export function openSettings(ctx) {
     const acts = h('div', 'actions'); acts.append(exp, imp); s.append(acts);
 
     s = section(body, 'About');
+    const ver = h('p', 'note', 'Version: checking…'); s.append(ver);
+    (async () => {
+      try { const k = (await caches.keys()).find((n) => n.startsWith('kittycat-core-')); ver.textContent = k ? 'Version: ' + k.replace('kittycat-core-', '') : 'Version: not installed for offline use yet'; }
+      catch { ver.textContent = 'Version: unknown'; }
+    })();
     s.append(h('p', 'note', 'Card artwork: English pattern playing cards deck (Wikimedia Commons), public domain (CC0).'));
   });
 }

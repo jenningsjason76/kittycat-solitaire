@@ -25,5 +25,6 @@ git add -A
 git commit -m "$MSG"
 git push -u origin HEAD
 echo
-echo "Pushed. The site updates in about a minute:"
+echo "Pushed (version ${V#v})."
+echo "The site updates in about a minute. On her phone, Settings > About > Version should show that number once it has updated:"
 echo "https://jenningsjason76.github.io/kittycat-solitaire/"

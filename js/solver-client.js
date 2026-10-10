@@ -30,7 +30,8 @@ export class SolverClient {
   async _inline(msg) {
     const solver = window.__solver || await import('./solver.js');
     return new Promise((resolve) => setTimeout(() => {
-      resolve(msg.type === 'deal' ? solver.findWinnableDeal(msg.draw, msg.scoring) : solver.solve(msg.state, msg.limit));
+      resolve(msg.type === 'deal' ? solver.findWinnableDeal(msg.draw, msg.scoring)
+        : msg.type === 'progress' ? solver.findProgress(msg.state, msg.limit) : solver.solve(msg.state, msg.limit));
     }, 0));
   }
 
@@ -47,4 +48,6 @@ export class SolverClient {
   deal(draw, scoring) { return this._call({ type: 'deal', draw, scoring }); }
   /** -> { result: 'win'|'lost'|'unknown', line, nodes } */
   solve(state, limit) { return this._call({ type: 'solve', state, limit }); }
+  /** -> { result: 'now'|'later'|'none'|'unknown', first, nodes } */
+  progress(state, limit) { return this._call({ type: 'progress', state, limit }); }
 }

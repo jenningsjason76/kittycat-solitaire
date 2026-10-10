@@ -11,6 +11,7 @@ const KEEP_UNDO = 60;
 const UNDO_GRACE_MS = 6000;                        // any move can be taken back for this long (fixes misdrops)
 const NOTE_COOLDOWN = 6;                          // the same kind of note is not shown again for this many moves
 const ANALYSIS_LIMIT = { 1: 40000, 3: 15000 };
+const MOVES_LIMIT = 30000;                         // the "Any moves left?" search
 const DEAD_END_LIMIT = { 1: 120000, 3: 50000 };   // a bigger budget for the rare, explicit "can this still be won?" check   // draw 3 gets fewer nodes so it stays responsive
 
 export class GameController {
@@ -27,6 +28,7 @@ export class GameController {
     this.feedbackLog = [];
     this.lastShown = {};          // note kind -> move number it was last shown at
     this.lastMove = null;         // read once by the board, to animate it
+    this.outOfMoves = false;      // true after "Any moves left?" proved there is nothing left to play
     this.dealId = 0;              // changes whenever a new game is dealt
     this.deadEnd = null;          // { key } while the "can't be won from here" prompt is showing
     this.deadEndAck = null;       // board she chose to keep playing from
@@ -122,7 +124,7 @@ export class GameController {
   /** Clears everything that belongs to the game that just ended. */
   resetForNewDeal() {
     this.history = []; this.serials = []; this.moveTimes = []; this.feedbackLog = []; this.lastShown = {};
-    this.deadEnd = null; this.deadEndAck = null; this.lastRecycleBoard = null;
+    this.deadEnd = null; this.deadEndAck = null; this.lastRecycleBoard = null; this.outOfMoves = false;
     this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
     this.winningLine = []; this.winnability = 'unknown'; this.dealNote = null; this.isAutoFinishing = false;
     this.dealToken++;
@@ -151,7 +153,7 @@ export class GameController {
       this.feedbackLog.forEach((e) => { if (e.serial === s) e.undone = true; });
       this.state = snap.state; this.winnability = snap.winnability; this.winningLine = snap.line;
     }
-    this.deadEnd = null; this.deadEndAck = null; this.lastRecycleBoard = null; this.lastMove = null;
+    this.deadEnd = null; this.deadEndAck = null; this.lastRecycleBoard = null; this.lastMove = null; this.outOfMoves = false;
     this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
     this.emit();
     return true;
@@ -205,6 +207,7 @@ export class GameController {
 
     this.history.push({ state: before, winnability: priorWin, line: priorLine });
     this.lastMove = move;
+    this.outOfMoves = false;
     this.serials.push(serial);
     this.moveTimes.push(Date.now());
     clearTimeout(this.graceTimer);                       // redraw the Undo button when the grace period ends
@@ -256,7 +259,7 @@ export class GameController {
     });
     this.state = snap.state; this.winnability = snap.winnability; this.winningLine = snap.line;
     this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
-    this.deadEnd = null; this.lastRecycleBoard = null; this.lastMove = null;
+    this.deadEnd = null; this.lastRecycleBoard = null; this.lastMove = null; this.outOfMoves = false;
     this.emit();
   }
 
@@ -304,6 +307,28 @@ export class GameController {
     this.deadEnd = null;
     this.emit();
   }
+
+  // ---------- "Any moves left?" ----------
+
+  /** Searches every way to make progress. -> { result: 'now'|'later'|'none'|'unknown', first } or null if the board changed meanwhile */
+  async checkMoves() {
+    const s = this.state;
+    const out = await this.solver.progress(s, MOVES_LIMIT).catch(() => null);
+    if (!out || this.state !== s) return null;
+    return out;
+  }
+
+  /** Outlines a move for five seconds (the same outline "Show me" uses). */
+  showMove(move) {
+    if (!move) return;
+    this.highlight = move;
+    const token = ++this.highlightToken;
+    this.emit();
+    setTimeout(() => { if (this.highlightToken === token) { this.highlight = null; this.emit(); } }, 5000);
+  }
+
+  markOutOfMoves() { this.outOfMoves = true; this.emit(); }
+  dismissOutOfMoves() { this.outOfMoves = false; this.emit(); }
 
   // ---------- feedback ----------
 

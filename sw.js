@@ -1,5 +1,5 @@
 // Service worker: makes the game work offline. Bump VERSION when you publish changes.
-const VERSION = 'v20261009201452';
+const VERSION = 'v20261009204521';
 const CORE = `kittycat-core-${VERSION}`;
 const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
 
