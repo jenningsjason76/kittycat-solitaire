@@ -1,14 +1,14 @@
 // Service worker: makes the game work offline. Bump VERSION when you publish changes.
-const VERSION = 'v6';
+const VERSION = 'v20261009201452';
 const CORE = `kittycat-core-${VERSION}`;
 const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
-  'css/styles.css', 'css/paw-vars.css',
+  'css/styles.css', 'css/paw-vars.css', 'css/textures.css',
   'js/main.js', 'js/engine.js', 'js/solver.js', 'js/critic.js', 'js/worker.js', 'js/solver-client.js',
   'js/store.js', 'js/board.js', 'js/dialogs.js', 'js/settings.js', 'js/stats.js', 'js/storage.js',
-  'js/audio.js', 'js/text.js', 'js/assets.js',
+  'js/audio.js', 'js/text.js', 'js/assets.js', 'js/cat.js', 'js/icons.js', 'js/victory.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
   'sounds/manifest.json',
   ...SUITS.flatMap((s) => Array.from({ length: 13 }, (_, i) => `cards/card_${s}_${i + 1}.webp`)),

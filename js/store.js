@@ -1,6 +1,6 @@
 // Game controller: current game, undo history, feedback log, autosave and solver bookkeeping.
 import {
-  K, DRAW, apply, isWon, newGame, randomSeed, legalMoves, describe, moveEq, canAutoFinish, nextFoundationMove,
+  K, DRAW, apply, isWon, newGame, randomSeed, legalMoves, describe, moveEq, canAutoFinish, nextFoundationMove, boardKey,
 } from './engine.js';
 import { critique } from './critic.js';
 import { kvGet, kvSet, kvDel } from './storage.js';
@@ -8,7 +8,10 @@ import { settings } from './settings.js';
 
 const SAVE_KEY = 'currentGame';
 const KEEP_UNDO = 60;
-const ANALYSIS_LIMIT = { 1: 40000, 3: 15000 };   // draw 3 gets fewer nodes so it stays responsive
+const UNDO_GRACE_MS = 6000;                        // any move can be taken back for this long (fixes misdrops)
+const NOTE_COOLDOWN = 6;                          // the same kind of note is not shown again for this many moves
+const ANALYSIS_LIMIT = { 1: 40000, 3: 15000 };
+const DEAD_END_LIMIT = { 1: 120000, 3: 50000 };   // a bigger budget for the rare, explicit "can this still be won?" check   // draw 3 gets fewer nodes so it stays responsive
 
 export class GameController {
   constructor({ stats, solver, fx }) {
@@ -17,9 +20,17 @@ export class GameController {
     this.state = newGame(randomSeed(), 1, 'standard');
     this.history = [];            // snapshots of the state before each move
     this.serials = [];            // one id per move, parallel to history
+    this.moveTimes = [];          // when each move was made, parallel to history
+    this.graceTimer = null;
     this.nextSerial = 1;
     this.nextEntryId = 1;
     this.feedbackLog = [];
+    this.lastShown = {};          // note kind -> move number it was last shown at
+    this.lastMove = null;         // read once by the board, to animate it
+    this.dealId = 0;              // changes whenever a new game is dealt
+    this.deadEnd = null;          // { key } while the "can't be won from here" prompt is showing
+    this.deadEndAck = null;       // board she chose to keep playing from
+    this.lastRecycleBoard = null; // board at the previous time the stock was turned over
     this.activeEntryId = null;
     this.revealedEntryId = null;
     this.highlight = null;
@@ -37,6 +48,10 @@ export class GameController {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { this.listeners.forEach((fn) => fn()); this.scheduleSave(); }
 
+  /** Moves with a concrete cost. Tips (a skipped free move) are counted separately. */
+  get lazyCount() { return this.feedbackLog.filter((e) => e.severity !== 'tip').length; }
+  get tipCount() { return this.feedbackLog.filter((e) => e.severity === 'tip').length; }
+
   get activeEntry() { return this.feedbackLog.find((e) => e.id === this.activeEntryId) || null; }
   get isStuck() { return !this.isDealing && !isWon(this.state) && legalMoves(this.state).length === 0; }
   get canAutoFinish() { return !this.isDealing && canAutoFinish(this.state); }
@@ -44,6 +59,8 @@ export class GameController {
   canUndo() {
     if (!this.history.length || this.isAutoFinishing || this.isDealing) return false;
     if (settings.get('undoPolicy') === 'unlimited') return true;
+    // The move she just made can always be taken back for a few seconds (a misdrop is not a "mistake").
+    if (Date.now() - (this.moveTimes[this.moveTimes.length - 1] || 0) < UNDO_GRACE_MS) return true;
     const serial = this.serials[this.serials.length - 1];
     return this.feedbackLog.some((e) => e.serial === serial && !e.undone);
   }
@@ -74,9 +91,9 @@ export class GameController {
     const s = await kvGet(SAVE_KEY);
     if (!s || !s.state || isWon(s.state)) return false;
     Object.assign(this, {
-      state: s.state, history: s.history || [], serials: s.serials || [],
+      state: s.state, history: s.history || [], serials: s.serials || [], moveTimes: (s.history || []).map(() => 0),
       nextSerial: s.nextSerial || 1, nextEntryId: s.nextEntryId || 1,
-      feedbackLog: s.feedbackLog || [], winnability: s.winnability || 'unknown',
+      feedbackLog: s.feedbackLog || [], lastShown: {}, winnability: s.winnability || 'unknown',
       winningLine: s.winningLine || [], resultRecorded: !!s.resultRecorded, dealNote: s.dealNote || null,
       activeEntryId: null, revealedEntryId: null, highlight: null, isDealing: false,
     });
@@ -92,7 +109,7 @@ export class GameController {
     await this.stats.add({
       drawMode: this.state.draw, scoring: this.state.scoring, won,
       moves: this.state.moves, score: this.state.score,
-      lazyMoves: this.feedbackLog.length,
+      lazyMoves: this.lazyCount,
       costMoves: this.feedbackLog.filter((e) => e.costGame).length,
       undone: this.feedbackLog.filter((e) => e.undone).length,
       feedbackWasOn: settings.get('feedbackOn'),
@@ -102,14 +119,53 @@ export class GameController {
 
   // ---------- new game ----------
 
+  /** Clears everything that belongs to the game that just ended. */
+  resetForNewDeal() {
+    this.history = []; this.serials = []; this.moveTimes = []; this.feedbackLog = []; this.lastShown = {};
+    this.deadEnd = null; this.deadEndAck = null; this.lastRecycleBoard = null;
+    this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
+    this.winningLine = []; this.winnability = 'unknown'; this.dealNote = null; this.isAutoFinishing = false;
+    this.dealToken++;
+  }
+
+  /** The same cards again, dealt fresh. */
+  async replayDeal() {
+    const { seed, draw, scoring } = this.state;
+    await this.recordResult(false);
+    this.resultRecorded = false;
+    this.resetForNewDeal();
+    this.isDealing = false;
+    this.state = newGame(seed, draw, scoring);
+    this.dealId++;
+    this.emit();
+    this.analyzeStart(this.state, this.dealToken);
+  }
+
+  /** Takes back the move with this id and every move after it (used by the dead-end screen). */
+  goBackTo(serial) {
+    const i = this.serials.indexOf(serial);
+    if (i < 0) return false;
+    while (this.serials.length > i) {
+      const snap = this.history.pop(), s = this.serials.pop();
+      this.moveTimes.pop();
+      this.feedbackLog.forEach((e) => { if (e.serial === s) e.undone = true; });
+      this.state = snap.state; this.winnability = snap.winnability; this.winningLine = snap.line;
+    }
+    this.deadEnd = null; this.deadEndAck = null; this.lastRecycleBoard = null; this.lastMove = null;
+    this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
+    this.emit();
+    return true;
+  }
+
+  /** Cards on the foundations. */
+  get cardsHome() { return this.state.found.reduce((a, b) => a + b, 0); }
+
   async newGame() {
     await this.recordResult(false);          // an unfinished game counts as played, not won
     this.resultRecorded = false;
     const draw = settings.get('drawMode'), scoring = settings.get('scoringMode');
-    this.history = []; this.serials = []; this.feedbackLog = [];
-    this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
-    this.winningLine = []; this.winnability = 'unknown'; this.dealNote = null; this.isAutoFinishing = false;
-    const token = ++this.dealToken;
+    this.resetForNewDeal();
+    const token = this.dealToken;
 
     if (settings.get('winnableDeals')) {
       this.isDealing = true;
@@ -120,6 +176,8 @@ export class GameController {
       if (token !== this.dealToken) return;
       this.isDealing = false;
       this.state = found.game;
+      this.dealId++;
+      this.deadEnd = null;
       if (found.line) { this.winnability = 'winnable'; this.winningLine = found.line; }
       else { this.dealNote = 'Deal not verified'; }
       this.emit();
@@ -127,6 +185,7 @@ export class GameController {
     } else {
       this.isDealing = false;
       this.state = newGame(randomSeed(), draw, scoring);
+      this.dealId++;
       this.emit();
       this.analyzeStart(this.state, token);
     }
@@ -145,9 +204,14 @@ export class GameController {
     const tracking = judge && settings.get('feedbackOn');
 
     this.history.push({ state: before, winnability: priorWin, line: priorLine });
+    this.lastMove = move;
     this.serials.push(serial);
+    this.moveTimes.push(Date.now());
+    clearTimeout(this.graceTimer);                       // redraw the Undo button when the grace period ends
+    this.graceTimer = setTimeout(() => this.emit(), UNDO_GRACE_MS + 60);
     this.state = next;
     this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
+    this.deadEnd = null;
 
     if (judge) this.fx.play(move[0] === K.STOCK ? 'draw' : move[2] === K.FOUND ? 'foundation' : 'place');
 
@@ -155,7 +219,7 @@ export class GameController {
       const found = critique(before, move);
       if (found) {
         this.addEntry(serial, next.moves, found.kind, found.better,
-          found.better ? describe(before, found.better) : null, false);
+          found.better ? describe(before, found.better) : null, false, found.severity || 'lazy');
       }
     }
 
@@ -169,6 +233,9 @@ export class GameController {
       if (tracking) this.analyze(before, next, serial, priorWin === 'winnable', priorLine);
     }
 
+    // Turning the stock over again with no change to the board means a whole pass found nothing to play.
+    if (move[0] === K.STOCK && before.stock.length === 0 && next.stock.length > 0) this.noteRecycle(next, serial);
+
     if (isWon(next)) { this.recordResult(true); this.fx.play('win'); }
     this.emit();
     return true;
@@ -180,9 +247,16 @@ export class GameController {
     if (!this.canUndo()) return;
     const snap = this.history.pop();
     const serial = this.serials.pop();
-    this.feedbackLog.forEach((e) => { if (e.serial === serial) e.undone = true; });
+    this.moveTimes.pop();
+    this.feedbackLog.forEach((e) => {
+      if (e.serial !== serial) return;
+      e.undone = true;
+      const key = `${e.kind}:${e.severity || 'lazy'}`;
+      if (this.lastShown[key] === e.moveNumber) delete this.lastShown[key];   // a note after an undo is not "repeated"
+    });
     this.state = snap.state; this.winnability = snap.winnability; this.winningLine = snap.line;
     this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
+    this.deadEnd = null; this.lastRecycleBoard = null; this.lastMove = null;
     this.emit();
   }
 
@@ -198,6 +272,39 @@ export class GameController {
     this.isAutoFinishing = false; this.emit();
   }
 
+  // ---------- dead ends ----------
+
+  noteRecycle(s, serial) {
+    const key = boardKey(s);
+    const stalled = this.lastRecycleBoard === key;
+    this.lastRecycleBoard = key;
+    if (!stalled || this.deadEndAck === key) return;
+    if (this.winnability === 'unwinnable') { this.deadEnd = { key }; return; }   // already proven earlier
+    this.checkDeadEnd(s, serial, key);
+  }
+
+  /** Asks the solver in the background. The prompt appears ONLY if it proves no win exists. */
+  async checkDeadEnd(s, serial, key) {
+    const token = this.dealToken;
+    const out = await this.solver.solve(s, DEAD_END_LIMIT[s.draw]).catch(() => null);
+    // Drawing cards does not change the board, so a proof still holds if she kept drawing while the solver worked.
+    // If she has played a card (or undone), or started a new game, the answer is stale.
+    if (!out || token !== this.dealToken || this.isDealing || boardKey(this.state) !== key) return;
+    if (out.result === 'lost') {
+      this.winnability = 'unwinnable'; this.winningLine = [];
+      this.deadEnd = { key };
+    } else if (out.result === 'win') {
+      this.winnability = 'winnable'; this.winningLine = out.line;
+    }                                                                           // 'unknown' = say nothing
+    this.emit();
+  }
+
+  dismissDeadEnd() {
+    if (this.deadEnd) this.deadEndAck = this.deadEnd.key;
+    this.deadEnd = null;
+    this.emit();
+  }
+
   // ---------- feedback ----------
 
   dismissNote() { this.activeEntryId = null; this.emit(); }
@@ -211,10 +318,15 @@ export class GameController {
     setTimeout(() => { if (this.highlightToken === token) { this.highlight = null; this.emit(); } }, 5000);
   }
 
-  addEntry(serial, moveNumber, kind, better, betterText, costGame) {
-    const entry = { id: this.nextEntryId++, serial, moveNumber, kind, betterMove: better || null,
+  addEntry(serial, moveNumber, kind, better, betterText, costGame, severity = 'lazy') {
+    const entry = { id: this.nextEntryId++, serial, moveNumber, kind, severity, betterMove: better || null,
       betterText, costGame, undone: false };
-    this.feedbackLog.push(entry);
+    this.feedbackLog.push(entry);                       // always counted in the summary and stats
+    const key = `${kind}:${severity}`;
+    const last = this.lastShown[key];
+    const repeat = !costGame && last !== undefined && moveNumber >= last && moveNumber - last < NOTE_COOLDOWN;
+    if (repeat) { entry.quiet = true; return; }         // logged, but no banner and no sound
+    this.lastShown[key] = moveNumber;
     if (this.serials[this.serials.length - 1] === serial) this.activeEntryId = entry.id;
     this.fx.play('flagged');
   }

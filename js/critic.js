@@ -10,7 +10,12 @@ function bestReveal(s, moves) {
   return best;
 }
 
-/** Returns { kind, better } or null. kinds: stockCycling, earlyFoundation, wastedKing, missedReveal. */
+/**
+ * Returns { kind, severity, better } or null.
+ * kinds: stockCycling, earlyFoundation, wastedKing, missedReveal.
+ * severity: 'lazy' when the move has a concrete cost (a hidden card stays hidden, a slot is wasted),
+ *           'tip' when a free move was skipped but nothing was lost.
+ */
 export function critique(before, move) {
   const legal = legalMoves(before);
   const revealing = legal.filter((m) => revealsHiddenCard(before, m));
@@ -18,17 +23,23 @@ export function critique(before, move) {
   // 1. Drew from the stock while a card-revealing or safe foundation move existed.
   if (move[0] === K.STOCK) {
     const best = bestReveal(before, revealing);
-    if (best) return { kind: 'stockCycling', better: best };
+    if (best) return { kind: 'stockCycling', severity: 'lazy', better: best };
     const safe = legal.find((m) => isSafeFoundationMove(before, m));
-    if (safe) return { kind: 'stockCycling', better: safe };
+    if (safe) return { kind: 'stockCycling', severity: 'tip', better: safe };
     return null;
   }
 
-  // 2. Sent a card to the foundation too early (it was still a landing spot).
+  // 2. Sent a card to the foundation and, in doing so, lost the only way to turn over a hidden card.
+  //    (The old, broader rule fired whenever any card could land on it, about 10 times per winning game.)
   if (move[2] === K.FOUND && move[0] === K.TAB) {
     if (isSafeFoundationMove(before, move) || revealsHiddenCard(before, move)) return null;
-    const landing = legal.find((m) => !moveEq(m, move) && m[2] === K.TAB && m[3] === move[1]);
-    return landing ? { kind: 'earlyFoundation', better: landing } : null;
+    const landings = legal.filter((m) => !moveEq(m, move) && m[2] === K.TAB && m[3] === move[1] && revealsHiddenCard(before, m));
+    if (!landings.length) return null;
+    const after = apply(before, move);
+    if (after && !legalMoves(after).some((m) => revealsHiddenCard(after, m))) {
+      return { kind: 'earlyFoundation', severity: 'lazy', better: bestReveal(before, landings) };
+    }
+    return null;
   }
 
   // 3. Used an empty column on a King from the waste while another King sat on hidden cards.
@@ -40,7 +51,7 @@ export function critique(before, move) {
         const firstUp = col.findIndex((c) => isUp(c));
         if (firstUp > 0 && rankOf(col[firstUp]) === 13) {
           const better = [K.TAB, j, K.TAB, move[3], col.length - firstUp];
-          if (isLegal(before, better)) return { kind: 'wastedKing', better };
+          if (isLegal(before, better)) return { kind: 'wastedKing', severity: 'lazy', better };
         }
       }
     }
@@ -51,7 +62,7 @@ export function critique(before, move) {
   if (move[2] === K.TAB && !revealsHiddenCard(before, move) && revealing.length) {
     const after = apply(before, move);
     if (after && !legalMoves(after).some((m) => revealsHiddenCard(after, m))) {
-      return { kind: 'missedReveal', better: bestReveal(before, revealing) };
+      return { kind: 'missedReveal', severity: 'lazy', better: bestReveal(before, revealing) };
     }
   }
   return null;

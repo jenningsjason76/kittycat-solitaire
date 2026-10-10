@@ -1,7 +1,7 @@
 #!/bin/sh
 # Publish a change to GitHub in one step:
 #   1. run the rules tests (if Node.js is installed)
-#   2. raise the offline-cache version in sw.js, so phones fetch the new files
+#   2. set a new offline-cache version (a timestamp) in sw.js, so phones fetch the new files
 #   3. commit and push
 # Usage:   ./tools/publish.sh "what you changed"
 set -e
@@ -15,11 +15,12 @@ if git diff --cached --quiet; then
 fi
 
 if command -v node >/dev/null 2>&1 && [ -f tests/engine.test.mjs ]; then
-  node --test tests/engine.test.mjs >/dev/null 2>&1 || { echo "The rules tests failed. Not publishing."; exit 1; }
+  node --test tests/*.test.mjs >/dev/null 2>&1 || { echo "The rules tests failed. Not publishing."; exit 1; }
   echo "Rules tests passed."
 fi
 
-perl -pi -e 's/(VERSION = .v)(\d+)/$1.($2+1)/e' sw.js
+# the version is a timestamp, so it always goes up (a phone only updates when sw.js changes)
+V="v$(date +%Y%m%d%H%M%S)" perl -pi -e 's/(VERSION = .)[^\x27"]*/$1.$ENV{V}/e' sw.js
 git add -A
 git commit -m "$MSG"
 git push -u origin HEAD

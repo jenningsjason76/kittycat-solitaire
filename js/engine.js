@@ -305,6 +305,11 @@ export function stateKey(s) {
   return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
 }
 
+/** Fingerprint of the table and foundations only (not the stock or waste). Equal keys = no board progress. */
+export function boardKey(s) {
+  return stateKey({ ...s, stock: [], waste: [], recycles: 0 });
+}
+
 /** Plain-English description of a move. Call on the position BEFORE the move. */
 export function describe(s, m) {
   if (m[0] === K.STOCK) return 'draw from the stock';

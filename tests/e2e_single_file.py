@@ -1,5 +1,6 @@
 from playwright.sync_api import sync_playwright
-URL = "file:///mnt/user-data/outputs/kittycat-pwa/dist/KittyCat-Solitaire.html"
+import os
+URL = "file://" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dist", "KittyCat-Solitaire.html")
 errors = []
 with sync_playwright() as p:
     b = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])

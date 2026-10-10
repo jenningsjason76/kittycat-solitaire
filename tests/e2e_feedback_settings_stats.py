@@ -39,7 +39,9 @@ with sync_playwright() as p:
     # undo is not allowed for an unflagged move
     page.evaluate("""async () => { const E = await import('./js/engine.js'); kittycat.ctl.perform([3,0,3,1,1]); }""")
     page.wait_for_timeout(200)
-    print("undo disabled after a good move:", page.evaluate("document.getElementById('undoBtn').disabled"))
+    print("undo allowed right after a good move (6 s grace):", not page.evaluate("document.getElementById('undoBtn').disabled"))
+    page.wait_for_timeout(6600)
+    print("undo disabled for a good move once the grace period is over:", page.evaluate("document.getElementById('undoBtn').disabled"))
 
     # ---- settings dialog ----
     page.locator("#menuBtn").click(); page.get_by_role("menuitem", name="Settings").click(); page.wait_for_timeout(300)

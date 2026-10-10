@@ -2,8 +2,9 @@
 import {
   K, DRAW, isUp, assetName, cardName, legalMoves, bestMove, canDraw, SUIT_SYMBOL, moveEq,
 } from './engine.js';
-import { settings, CARD_SCALE } from './settings.js';
+import { settings, CARD_SCALE, motionScale } from './settings.js';
 import { asset } from './assets.js';
+import { catHTML } from './cat.js';
 
 const kindOf = (key) => (key === 's' ? K.STOCK : key === 'w' ? K.WASTE : key[0] === 'f' ? K.FOUND : K.TAB);
 const indexOf = (key) => (key.length > 1 ? Number(key.slice(1)) : 0);
@@ -23,25 +24,39 @@ export class Board {
     this.press = null;
     this.drag = null;
     this.L = null;
+    this.noAnim = true;
+    this.seenDeal = ctl.dealId;
     this.build();
     this.relayout();
     new ResizeObserver(() => this.relayout()).observe(root.parentElement);
     ctl.subscribe(() => this.render());
-    root.addEventListener('pointerdown', (e) => this.onDown(e));
+    root.addEventListener('pointerdown', (e) => { this.skipMotion(); this.onDown(e); }, true);
     root.addEventListener('pointermove', (e) => this.onMove(e));
     root.addEventListener('pointerup', (e) => this.onUp(e, false));
     root.addEventListener('pointercancel', (e) => this.onUp(e, true));   // interrupted drags snap back
     root.addEventListener('keydown', (e) => this.onKey(e));
-    settings.onChange((k) => { if (k === 'cardSize' || k === '*') this.relayout(); });
+    settings.onChange((k) => { if (k === 'cardSize' || k === '*') this.relayout(); if (k === 'catMode' || k === 'tableStyle' || k === '*') this.mountCat(); });
+    this.mountCat();
   }
 
   build() {
     const top = el('div', 'toprow', this.root), tab = el('div', 'tabrow', this.root);
     const make = (key, cls, parent) => { const p = el('div', 'pile ' + cls, parent); p.dataset.pile = key; this.piles[key] = p; return p; };
     make('s', 'stock', top); make('w', 'waste', top);
-    el('div', 'pile spacer', top);
+    this.spacer = el('div', 'pile spacer', top);
     for (let i = 0; i < 4; i++) make('f' + i, 'found', top);
     for (let i = 0; i < 7; i++) make('t' + i, 'tab', tab);
+  }
+
+  /** The cat sits in the empty slot of the top row (companion mode, or the cat-paw table in "cat theme only"). */
+  mountCat() {
+    this.spacer.querySelectorAll('.cat-perch').forEach((n) => n.remove());
+    const mode = settings.get('catMode'), paws = settings.get('tableStyle') === 'paws';
+    if (mode === 'companion' || (mode === 'themeOnly' && paws)) {
+      const perch = el('div', 'cat-perch', this.spacer);
+      perch.innerHTML = catHTML();
+      document.dispatchEvent(new CustomEvent('kc:cat'));
+    }
   }
 
   // ---------- layout ----------
@@ -62,7 +77,9 @@ export class Board {
     const s = this.root.style;
     s.setProperty('--cw', cw + 'px'); s.setProperty('--ch', ch + 'px');
     s.setProperty('--gap', gap + 'px'); s.setProperty('--margin', margin + 'px'); s.setProperty('--tabh', tabh + 'px');
+    this.noAnim = true;                      // a resize is not a move
     this.render();
+    this.noAnim = false;
   }
 
   offsets(cards) {
@@ -81,7 +98,7 @@ export class Board {
 
   makeCard(c, pileKey, count, y, interactive = true) {
     const e = el('div', 'card ' + (isUp(c) ? 'up' : 'down'));
-    e.dataset.pile = pileKey; e.dataset.count = String(count);
+    e.dataset.pile = pileKey; e.dataset.count = String(count); e.dataset.id = String(c & 63);
     e.style.transform = `translateY(${y}px)`;
     if (isUp(c)) {
       e.style.backgroundImage = `url("${asset(`cards/${assetName(c)}.webp`)}")`;
@@ -101,8 +118,19 @@ export class Board {
     return s;
   }
 
+  /** Where every card is right now (including cards being dragged), so moves can glide from there. */
+  captureRects() {
+    const cards = new Map();
+    document.querySelectorAll('.card[data-id]').forEach((c) => {
+      const r = c.getBoundingClientRect();
+      cards.set(c.dataset.id, { x: r.left, y: r.top, up: c.classList.contains('up') });
+    });
+    return { cards, stock: this.piles.s.getBoundingClientRect(), waste: this.piles.w.getBoundingClientRect() };
+  }
+
   render() {
     if (!this.L) return;
+    const prev = this.captureRects();
     if (this.drag) this.endDragVisuals();
     const st = this.ctl.state;
     const { ch } = this.L;
@@ -149,6 +177,9 @@ export class Board {
       cards.forEach((c, k) => p.appendChild(this.makeCard(c, 't' + i, cards.length - k, ys[k])));
     }
 
+    const perch = this.spacer.querySelector('.cat-perch');
+    if (perch) perch.dataset.draw = String(st.draw);
+
     // "Show me" highlight
     if (hl) {
       const src = this.piles[keyOf(hl[0], hl[1])];
@@ -159,8 +190,89 @@ export class Board {
         if (hl[2] === K.TAB) { const ys = this.offsets(st.tab[hl[3]]); marker.style.top = (ys[ys.length - 1] || 0) + 'px'; }
       }
     }
+    this.root.classList.add('no-trans');                       // measure without the zoom easing back
     this.root.classList.remove('dragging', 'from-top');
     this.root.querySelectorAll('.focus, .lens').forEach((p) => p.classList.remove('focus', 'lens'));
+    this.afterRender(prev);
+    requestAnimationFrame(() => this.root.classList.remove('no-trans'));
+  }
+
+  // ---------- motion ----------
+
+  afterRender(prev) {
+    const last = this.ctl.lastMove; this.ctl.lastMove = null;
+    const scale = motionScale();
+    if (this.ctl.dealId !== this.seenDeal) {
+      this.seenDeal = this.ctl.dealId;
+      if (!this.noAnim && scale) this.dealAnimation(scale);
+      return;
+    }
+    if (last && last[2] === K.FOUND) this.pulse('f' + last[3]);
+    if (!this.noAnim && scale) this.flight(prev, last, scale);
+  }
+
+  /** Keeps a moving card above its neighbours while it travels. */
+  lift(card, anim) {
+    const pile = card.parentElement, top = pile && pile.parentElement && pile.parentElement.classList.contains('toprow');
+    if (pile) pile.style.zIndex = '20';
+    if (top) this.root.classList.add('animating-top');
+    const done = () => { if (pile) pile.style.zIndex = ''; if (top) this.root.classList.remove('animating-top'); };
+    anim.finished.then(done, done);
+  }
+
+  turnOver(card, base, delay, scale) {
+    const f = (deg) => `${base === 'none' ? '' : base} perspective(520px) rotateY(${deg}deg)`;
+    card.animate([{ transform: f(88) }, { transform: f(0) }], { duration: 170 * scale, delay, easing: 'ease-out', fill: 'backwards' });
+  }
+
+  flight(prev, last, scale) {
+    const dur = 180 * scale;
+    const easing = scale > 1 ? 'cubic-bezier(.3,1.35,.5,1)' : 'cubic-bezier(.2,.9,.3,1.03)';
+    let n = 0;
+    this.root.querySelectorAll('.card[data-id]').forEach((c) => {
+      const r = c.getBoundingClientRect();
+      let p = prev.cards.get(c.dataset.id);
+      if (!p && last && last[0] === K.STOCK && c.dataset.pile === 'w') p = { x: prev.stock.left, y: prev.stock.top, up: false };   // drawn from the stock
+      if (!p && last && last[0] === K.STOCK && c.dataset.pile === 's') p = { x: prev.waste.left, y: prev.waste.top, up: true };    // stock turned over
+      if (!p) return;
+      const dx = p.x - r.left, dy = p.y - r.top;
+      const base = c.style.transform || 'none';
+      const delay = (n++ % 8) * 14 * scale;
+      if (Math.abs(dx) + Math.abs(dy) > 1.5) {
+        const a = c.animate([{ transform: `translate(${dx}px, ${dy}px) ${base === 'none' ? '' : base}` }, { transform: base }], { duration: dur, delay, easing, fill: 'backwards' });
+        this.lift(c, a);
+      }
+      if (!p.up && c.classList.contains('up')) this.turnOver(c, base, dur * 0.55, scale);
+    });
+  }
+
+  dealAnimation(scale) {
+    const from = this.piles.s.getBoundingClientRect();
+    let k = 0;
+    for (let row = 0; row < 7; row++) {
+      for (let col = row; col < 7; col++) {
+        const card = this.piles['t' + col].querySelectorAll('.card')[row];
+        if (!card) continue;
+        const r = card.getBoundingClientRect();
+        const base = card.style.transform || 'none';
+        const delay = k++ * 24 * scale, dur = 300 * scale;
+        const a = card.animate([{ transform: `translate(${from.left - r.left}px, ${from.top - r.top}px) ${base === 'none' ? '' : base}` }, { transform: base }],
+          { duration: dur, delay, easing: 'cubic-bezier(.2,.8,.25,1)', fill: 'backwards' });
+        this.lift(card, a);
+        if (card.classList.contains('up')) this.turnOver(card, base, delay + dur * 0.8, scale);
+      }
+    }
+  }
+
+  pulse(key) {
+    const p = this.piles[key]; if (!p) return;
+    p.classList.remove('land'); void p.offsetWidth; p.classList.add('land');
+    setTimeout(() => p.classList.remove('land'), 420);
+  }
+
+  /** Any touch while cards are gliding lets them arrive at once. */
+  skipMotion() {
+    document.getAnimations().forEach((a) => { const t = a.effect && a.effect.target; if (t && t.classList && t.classList.contains('card')) a.finish(); });
   }
 
   // ---------- gestures ----------
@@ -190,6 +302,7 @@ export class Board {
   startDrag() {
     const p = this.press, st = this.ctl.state;
     p.dragging = true;
+    document.dispatchEvent(new CustomEvent('kc:drag', { detail: true }));
     const pileEl = this.piles[p.pile];
     const els = [...pileEl.querySelectorAll('.card')].filter((c) => Number(c.dataset.count) <= p.count && !c.classList.contains('static'));
     const fk = kindOf(p.pile), fi = indexOf(p.pile);
@@ -218,7 +331,10 @@ export class Board {
   moveDrag(e, dx, dy) {
     const d = this.drag; if (!d) return;
     const lift = this.lensOn && document.documentElement.dataset.zoom === 'on' ? 1.12 : 1;
-    d.items.forEach((c) => { c.style.transform = `translate(${dx}px, ${dy}px) scale(${lift})`; });
+    const vx = dx - (d.lastDx === undefined ? dx : d.lastDx); d.lastDx = dx;
+    d.tilt = (d.tilt || 0) * 0.8 + Math.max(-7, Math.min(7, vx * 0.7)) * 0.2;          // cards lean a little as you sweep them
+    const tilt = lift > 1 && motionScale() ? d.tilt : 0;
+    d.items.forEach((c) => { c.style.transform = `translate(${dx}px, ${dy}px) scale(${lift}) rotate(${tilt}deg)`; });
     const target = d.candidates.find((m) => {
       const r = d.rects[keyOf(m[2], m[3])];
       return r && e.clientX >= r.left - 12 && e.clientX <= r.right + 12 && e.clientY >= r.top - 12 && e.clientY <= r.bottom + 12;
@@ -236,6 +352,7 @@ export class Board {
     this.press = null;
     try { this.root.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     if (!p.dragging) { if (!cancelled) this.tap(p); return; }
+    document.dispatchEvent(new CustomEvent('kc:drag', { detail: false }));
     const d = this.drag;
     const move = cancelled ? null : d.target;
     if (move) { this.ctl.perform(move); return; }              // controller emits -> render()

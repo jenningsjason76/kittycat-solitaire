@@ -4,3 +4,6 @@ dist-hosted/
 node_modules/
 __pycache__/
 *.pyc
+.claude/settings.local.json
+CLAUDE.local.md
+.venv/

@@ -167,15 +167,37 @@ test('critic: stock cycling, early foundation, wasted king, missed reveal', () =
   assert.equal(c && c.kind, 'stockCycling');
   assert.ok(isLegal(s, c.better));
 
-  // 2. early foundation: 3 of hearts on top of column, a black 2 can land on it; not safe, no flip
+  // 2. early foundation (narrow rule): only when it costs the ONLY way to turn over a hidden card
+  const id = (suit, rank) => suit * 13 + rank - 1;       // suits: 0 clubs 1 diamonds 2 hearts 3 spades
+  //   (a) the old over-eager case: sending 5H up while a black 4 could land on it, but nothing is hidden -> quiet
   s = blank();
-  const aceH = 2 * 13, twoH = 2 * 13 + 1, threeH = 2 * 13 + 2, twoS = 3 * 13 + 1;
-  s.found = [0, 0, 2, 0];                                   // ace, 2 of hearts already up
-  s.tab[0] = [threeH | UP];
-  s.tab[1] = [twoS | UP];
-  c = critique(s, [K.TAB, 0, K.FOUND, 2, 1]);
+  s.found = [0, 0, 4, 0];
+  s.tab[0] = [id(3, 4) | UP];                              // black 4 of spades, nothing under it
+  s.tab[1] = [id(2, 5) | UP];                              // 5 of hearts
+  assert.equal(critique(s, [K.TAB, 1, K.FOUND, 2, 1]), null, 'ordinary progress must not be flagged');
+  //   (b) stranding: the black 4 sits on a hidden card and the 5H is the only place it can land
+  s = blank();
+  s.found = [0, 0, 4, 0];
+  s.tab[0] = [20, id(3, 4) | UP];                          // hidden card under the black 4
+  s.tab[1] = [id(2, 5) | UP];
+  c = critique(s, [K.TAB, 1, K.FOUND, 2, 1]);
   assert.equal(c && c.kind, 'earlyFoundation');
-  assert.deepEqual(c.better.slice(0, 5), [K.TAB, 1, K.TAB, 0, 1]);
+  assert.equal(c.severity, 'lazy');
+  assert.deepEqual(c.better, [K.TAB, 0, K.TAB, 1, 1]);
+  //   (c) another reveal is still available afterwards -> quiet
+  s.tab[2] = [21, id(0, 4) | UP];                          // a second hidden card under the black 4 of clubs
+  s.tab[3] = [id(1, 5) | UP];                              // a red 5 of diamonds the club 4 can reach
+  assert.equal(critique(s, [K.TAB, 1, K.FOUND, 2, 1]), null, 'a reveal remains, so no flag');
+
+  // tip vs lazy for the stock: a skipped reveal is lazy, a skipped free foundation card is only a tip
+  s = blank();
+  s.tab[0] = [id(0, 1) | UP];                              // ace of clubs, free to go up, nothing hidden anywhere
+  c = critique(s, DRAW);
+  assert.equal(c && c.kind, 'stockCycling');
+  assert.equal(c.severity, 'tip');
+  s = blank();
+  s.tab[0] = [20, red6 | UP]; s.tab[1] = [black7 | UP];
+  assert.equal(critique(s, DRAW).severity, 'lazy');
 
   // 3. wasted king: king from waste into empty column while another king covers hidden cards
   s = blank();
@@ -209,4 +231,23 @@ test('describe reads well', () => {
   s.tab[1] = [(3 * 13 + 6) | UP];
   assert.equal(describe(s, [K.TAB, 0, K.TAB, 1, 1]), 'move 6♥ onto 7♠');
   assert.equal(describe(s, DRAW), 'draw from the stock');
+});
+
+test('acceptance: the coach stays quiet on winning games (narrowed early-foundation rule)', () => {
+  let games = 0, flags = 0, early = 0;
+  for (let seed = 1; seed <= 60 && games < 30; seed++) {
+    let st = newGame(seed * 7919, 1, 'standard');
+    const out = solve(st, 20000);
+    if (out.result !== 'win') continue;
+    games++;
+    for (const m of out.line) {
+      const c = critique(st, m);
+      if (c && c.severity === 'lazy') { flags++; if (c.kind === 'earlyFoundation') early++; }
+      st = apply(st, m);
+    }
+  }
+  console.log(`winning games ${games}: lazy flags per game ${(flags / games).toFixed(2)} (early-foundation ${(early / games).toFixed(2)})`);
+  assert.ok(games >= 20);
+  assert.ok(early / games < 1, 'early-foundation flags per winning game must stay under 1 (was about 10)');
+  assert.ok(flags / games < 2, 'lazy flags per winning game must stay under 2');
 });

@@ -16,7 +16,7 @@ def data_uri(p): return f"data:{MIME[os.path.splitext(p)[1]]};base64,{b64(p)}"
 
 # ---------- scripts: wrap each module so names cannot collide ----------
 ORDER = ["engine", "solver", "critic", "assets", "storage", "settings", "stats", "text", "audio",
-         "solver-client", "store", "board", "dialogs", "main"]
+         "solver-client", "store", "cat", "icons", "victory", "board", "dialogs", "main"]
 IMPORT = re.compile(r"import\s*\{([^}]*)\}\s*from\s*'\./([\w-]+)\.js';", re.S)
 EXPORT = re.compile(r"^export\s+(?:async\s+)?(?:const|let|var|function|class)\s+([A-Za-z0-9_$]+)", re.M)
 
@@ -44,7 +44,7 @@ for p in sorted(glob.glob(os.path.join(ROOT, "cards", "*.webp"))) + sorted(glob.
         assets[rel] = data_uri(rel)
 
 # ---------- css ----------
-css = read("css/styles.css").replace('@import url("paw-vars.css");', read("css/paw-vars.css"))
+css = read("css/styles.css").replace('@import url("paw-vars.css");', read("css/paw-vars.css")).replace('@import url("textures.css");', read("css/textures.css"))
 css = re.sub(r'url\("\.\./(cards/[\w.]+)"\)', lambda m: f'url("{assets[m.group(1)]}")', css)
 
 # ---------- html ----------

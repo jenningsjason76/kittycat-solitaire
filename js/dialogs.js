@@ -1,8 +1,9 @@
 // Settings, stats, summary and credits dialogs.
 import { settings, DEFAULTS } from './settings.js';
-import { TITLES } from './text.js';
+import { titleFor } from './text.js';
 import { kvGet, kvSet, deviceId } from './storage.js';
 import { asset } from './assets.js';
+import { icon } from './icons.js';
 
 function h(tag, cls, text) {
   const e = document.createElement(tag);
@@ -18,7 +19,7 @@ function open(title, build) {
   d.replaceChildren();
   const head = h('div', 'head');
   const t = h('h2', '', title); t.id = 'dlgTitle';
-  const close = h('button', 'icon-btn', '✕'); close.setAttribute('aria-label', 'Close'); close.onclick = () => d.close();
+  const close = h('button', 'icon-btn', ''); close.innerHTML = icon('close', 20); close.setAttribute('aria-label', 'Close'); close.onclick = () => d.close();
   head.append(t, close);
   const body = h('div', 'body');
   build(body);
@@ -70,12 +71,16 @@ export function openSettings(ctx) {
     s = section(body, 'Feedback');
     toggleRow(s, 'Feedback on', 'feedbackOn');
     selectRow(s, 'Tone', 'feedbackTone', [['direct', 'Direct'], ['gentle', 'Gentle']]);
-    selectRow(s, 'Undo', 'undoPolicy', [['flaggedOnly', 'Flagged moves only'], ['unlimited', 'Unlimited']]);
+    selectRow(s, 'Undo', 'undoPolicy', [['flaggedOnly', 'Flagged moves + last 6 seconds'], ['unlimited', 'Unlimited']]);
 
     s = section(body, 'Appearance');
     selectRow(s, 'Mode', 'appearance', [['system', 'Match device'], ['light', 'Light'], ['dark', 'Dark']]);
+    selectRow(s, 'Light', 'light', [['auto', 'Follows the time of day'], ['day', 'Always day'], ['evening', 'Always evening']]);
+    selectRow(s, 'Motion', 'motion', [['calm', 'Calm'], ['lively', 'Lively'], ['off', 'Off']]);
+    selectRow(s, 'Victory', 'victory', [['random', 'Random'], ['fan', 'Fan and bow'], ['cascade', 'Soft cascade'], ['cat', 'Cat swats the kings'], ['riffle', 'Riffle'], ['off', 'None']]);
     selectRow(s, 'Card size', 'cardSize', [['large', 'Large'], ['medium', 'Medium'], ['small', 'Small']]);
     selectRow(s, 'Table', 'tableStyle', [['calm', 'Calm'], ['paws', 'Cat paws']]);
+    selectRow(s, 'Cat', 'catMode', [['off', 'Off (paw cues only)'], ['companion', 'On the table'], ['themeOnly', 'With the cat-paw table'], ['endScreens', 'Win and end screens (default)']]);
     selectRow(s, 'Card back', 'cardBack', [['blue', 'Blue'], ['red', 'Red'], ['purple', 'Purple'], ['yellow', 'Gold'], ['paws', 'Cat paws']]);
     toggleRow(s, 'Zoom effect', 'zoomEffect');
     s.append(h('p', 'note', 'The zoom effect is turned off automatically when Reduce Motion is on.'));
@@ -219,7 +224,8 @@ export function openSummary(ctx) {
   open(ctl.state.found.every((f) => f === 13) ? 'You won' : 'Game summary', (body) => {
     const log = ctl.feedbackLog;
     let s = section(body, 'This game');
-    kv(s, 'Moves', ctl.state.moves); kv(s, 'Lazy moves flagged', log.length);
+    kv(s, 'Moves', ctl.state.moves); kv(s, 'Lazy moves flagged', ctl.lazyCount);
+    if (ctl.tipCount) kv(s, 'Tips', ctl.tipCount);
     kv(s, 'Flagged moves you undid', log.filter((e) => e.undone).length);
     kv(s, 'Moves that cost the game', log.filter((e) => e.costGame).length);
     if (!log.length) { body.append(h('p', '', 'No lazy moves. Nicely played.')); return; }
@@ -227,7 +233,7 @@ export function openSummary(ctx) {
     const list = h('div'); list.hidden = true;
     toggle.onclick = () => { list.hidden = !list.hidden; toggle.textContent = list.hidden ? 'See details' : 'Hide details'; };
     for (const e of log) {
-      const row = h('div', 'hist'), t = h('div', 't'); t.append(h('span', '', `Move ${e.moveNumber}: ${TITLES[e.kind]}`));
+      const row = h('div', 'hist'), t = h('div', 't'); t.append(h('span', '', `Move ${e.moveNumber}: ${titleFor(e)}`));
       row.append(t);
       if (e.betterText) row.append(h('div', 'd', `Better: ${e.betterText}.`));
       if (e.costGame && e.kind !== 'costGame') row.append(h('div', 'd', 'It also made the deal unwinnable.'));

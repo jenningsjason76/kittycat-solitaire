@@ -9,6 +9,9 @@ import { message } from './text.js';
 import { openSettings, openStats, openSummary, closeDialog } from './dialogs.js';
 import { requestPersistence } from './storage.js';
 import { isWon } from './engine.js';
+import { catHTML, setCatState } from './cat.js';
+import { icon } from './icons.js';
+import { playVictory } from './victory.js';
 
 const $ = (id) => document.getElementById(id);
 const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
@@ -20,7 +23,7 @@ const ctl = new GameController({ stats, solver, fx });
 const ctx = { stats, ctl };
 window.kittycat = { ctl, stats, settings, fx };         // handy for debugging and tests
 
-new Board($('board'), ctl);
+const board = new Board($('board'), ctl);
 
 // ---------- top bar ----------
 
@@ -33,8 +36,10 @@ function statusText() {
 
 function renderBar() {
   const status = $('status'); status.replaceChildren();
-  const line = mk('div'); line.append(mk('span', 'paw', '🐾'), document.createTextNode(statusText())); status.append(line);
+  const pill = mk('span', 'pill'); const paw = mk('span', 'paw'); paw.innerHTML = icon('paw', 15);
+  pill.append(paw, document.createTextNode(statusText())); status.append(pill);
   if (ctl.dealNote) status.append(mk('small', '', ctl.dealNote));
+  $('finishBtn').innerHTML = icon('check', 18) + '<span>Finish</span>';
   $('undoBtn').disabled = !ctl.canUndo();
   $('finishBtn').hidden = !ctl.canAutoFinish;
   $('finishBtn').disabled = ctl.isAutoFinishing;
@@ -43,8 +48,9 @@ function renderBar() {
 function renderBanner() {
   const box = $('banner'), entry = ctl.activeEntry;
   if (!entry || !settings.get('feedbackOn') || isWon(ctl.state) || ctl.isDealing) { box.hidden = true; box.replaceChildren(); return; }
-  if (box.dataset.entry === String(entry.id) && box.dataset.revealed === String(ctl.revealedEntryId === entry.id) && !box.hidden && box.dataset.undo === String(ctl.canUndo())) return;
-  box.dataset.entry = entry.id; box.dataset.revealed = String(ctl.revealedEntryId === entry.id); box.dataset.undo = String(ctl.canUndo());
+  const tone = settings.get('feedbackTone');
+  if (box.dataset.entry === String(entry.id) && box.dataset.revealed === String(ctl.revealedEntryId === entry.id) && !box.hidden && box.dataset.undo === String(ctl.canUndo()) && box.dataset.tone === tone) return;
+  box.dataset.entry = entry.id; box.dataset.revealed = String(ctl.revealedEntryId === entry.id); box.dataset.undo = String(ctl.canUndo()); box.dataset.tone = tone;
   const inner = mk('div', 'box'); inner.setAttribute('role', 'status');
   inner.append(mk('p', '', message(entry, settings.get('feedbackTone'))));
   if (ctl.revealedEntryId === entry.id && entry.betterText) inner.append(mk('p', 'better', `Better: ${entry.betterText}.`));
@@ -52,17 +58,90 @@ function renderBanner() {
   if (entry.betterMove) { const b = mk('button', 'btn', 'Show me'); b.onclick = () => ctl.showBetterMove(entry); row.append(b); }
   if (ctl.canUndo()) { const b = mk('button', 'btn', 'Undo'); b.onclick = () => ctl.undo(); row.append(b); }
   row.append(mk('span', 'spacer'));
-  const x = mk('button', 'btn', '✕'); x.setAttribute('aria-label', 'Dismiss'); x.onclick = () => ctl.dismissNote(); row.append(x);
+  const x = mk('button', 'btn'); x.innerHTML = icon('close', 18); x.setAttribute('aria-label', 'Dismiss'); x.onclick = () => ctl.dismissNote(); row.append(x);
   inner.append(row);
   box.replaceChildren(inner); box.hidden = false;
 }
 
+// ---------- the cat ----------
+
+let dragging = false, lastEntryId = null;
+const heroCat = () => {
+  const mode = settings.get('catMode');
+  return mode === 'companion' || mode === 'endScreens' || (mode === 'themeOnly' && settings.get('tableStyle') === 'paws');
+};
+function updateCat() {
+  const entry = ctl.activeEntry;
+  const flick = !!entry && entry.id !== lastEntryId;
+  lastEntryId = entry ? entry.id : lastEntryId;
+  const state = isWon(ctl.state) ? 'cheer' : (ctl.deadEnd || ctl.isStuck) ? 'sleep' : dragging ? 'perk' : 'idle';
+  setCatState(state, flick);
+}
+document.addEventListener('kc:drag', (e) => { dragging = !!e.detail; updateCat(); });
+document.addEventListener('kc:cat', updateCat);
+
+let victory = 'idle';       // idle -> playing -> done, once per win
+
+function catHero() {
+  if (!heroCat()) return null;
+  const h = mk('div', 'cat-hero'); h.innerHTML = catHTML(); return h;
+}
+
+function ring(home) {
+  const r = 46, c = 2 * Math.PI * r;
+  const w = mk('div', 'ring');
+  w.innerHTML = `<svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true"><circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--line)" stroke-width="9"/>` +
+    `<circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--lamp)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(c * home / 52).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 60 60)"/></svg>` +
+    `<div class="ring-n"><strong>${home}</strong><span>of 52 home</span></div>`;
+  return w;
+}
+
+function winCard(box) {
+  const n = ctl.lazyCount, tips = ctl.tipCount, avg = stats.recentLazyAverage;
+  box.append(mk('h2', '', 'Well played.'), mk('div', 'big', statusText()));
+  if (settings.get('feedbackOn')) {
+    const line = (n === 0 ? 'No lazy moves' : n === 1 ? '1 lazy move' : `${n} lazy moves`) + (tips ? ` · ${tips} tip${tips === 1 ? '' : 's'}` : '') + (avg != null ? ` · recent average ${avg.toFixed(1)}` : '');
+    box.append(mk('div', 'muted', line));
+  }
+  const days = Math.max(stats.currentDayStreak, 1), trail = mk('div', 'trail');
+  for (let i = 0; i < Math.min(days, 7); i++) { const p = mk('span'); p.innerHTML = icon('paw', 16); trail.append(p); }
+  trail.append(mk('small', '', `${days} day${days === 1 ? '' : 's'} in a row`));
+  box.append(trail);
+  const row = mk('div', 'row');
+  const d = mk('button', 'btn', 'See the game'); d.onclick = () => openSummary(ctx);
+  const g = mk('button', 'btn primary', 'Play again'); g.onclick = () => ctl.newGame();
+  row.append(d, g); box.append(row);
+}
+
+function defeatCard(box, dead) {
+  box.append(mk('h2', '', dead ? 'No win from here.' : 'No more moves.'), ring(ctl.cardsHome));
+  const turn = ctl.feedbackLog.find((e) => e.costGame && !e.undone && ctl.serials.includes(e.serial));
+  if (turn) {
+    const t = mk('div', 'turn', `The deal turned at move ${turn.moveNumber}. `);
+    const back = mk('button', 'linkbtn', 'Go back to it'); back.onclick = () => ctl.goBackTo(turn.serial);
+    t.append(back); box.append(t);
+  }
+  if (dead) box.append(mk('div', 'muted', 'A check of every remaining move found no way to win.'));
+  const row = mk('div', 'row');
+  if (dead) { const keep = mk('button', 'btn', 'Keep playing'); keep.onclick = () => ctl.dismissDeadEnd(); row.append(keep); }
+  else { const d = mk('button', 'btn', 'See the game'); d.onclick = () => openSummary(ctx); row.append(d); }
+  const again = mk('button', 'btn', 'Try this deal again'); again.onclick = () => ctl.replayDeal();
+  const g = mk('button', 'btn primary', 'New game'); g.onclick = () => ctl.newGame();
+  row.append(again, g); box.append(row);
+}
+
 function renderOverlay() {
   const o = $('overlay');
-  const won = isWon(ctl.state), stuck = ctl.isStuck;
-  if (!ctl.isDealing && !won && !stuck) { o.hidden = true; o.replaceChildren(); o.dataset.kind = ''; return; }
-  const kind = ctl.isDealing ? 'dealing' : won ? 'won' : 'stuck';
-  const sig = kind + ctl.state.moves + ctl.feedbackLog.length;
+  const won = isWon(ctl.state), stuck = ctl.isStuck, dead = !!ctl.deadEnd;
+  if (!won) victory = 'idle';
+  if (won && victory === 'idle') {
+    victory = 'playing';
+    playVictory(board).then(() => { victory = 'done'; renderOverlay(); });
+  }
+  const show = ctl.isDealing || stuck || dead || (won && victory === 'done');
+  if (!show) { o.hidden = true; o.replaceChildren(); o.dataset.sig = ''; document.body.classList.remove('overlay-open'); return; }
+  const kind = ctl.isDealing ? 'dealing' : won ? 'won' : stuck ? 'stuck' : 'dead';
+  const sig = kind + ctl.state.moves + ctl.feedbackLog.length + String(ctl.canUndo()) + settings.get('catMode') + settings.get('tableStyle') + stats.recentLazyAverage;
   if (o.dataset.sig === sig && !o.hidden) return;
   o.dataset.sig = sig;
   const box = mk('div', 'box');
@@ -70,22 +149,22 @@ function renderOverlay() {
     box.append(mk('div', 'spinner'), mk('strong', '', settings.get('winnableDeals') ? 'Finding a winnable deal…' : 'Dealing…'));
     box.setAttribute('role', 'status');
   } else {
-    const n = ctl.feedbackLog.length;
-    box.append(mk('h2', '', won ? 'You won!' : 'No more moves'), mk('div', '', statusText()),
-      mk('div', 'muted', n === 0 ? 'No lazy moves. Nicely played.' : n === 1 ? '1 lazy move flagged.' : `${n} lazy moves flagged.`));
-    const row = mk('div', 'row');
-    const d = mk('button', 'btn', 'See details'); d.onclick = () => openSummary(ctx);
-    const g = mk('button', 'btn primary', 'New Game'); g.onclick = () => ctl.newGame();
-    row.append(d, g); box.append(row);
+    const hero = catHero(); if (hero) box.append(hero);
+    box.setAttribute('role', kind === 'won' ? 'status' : 'alertdialog');
+    if (kind === 'won') winCard(box); else defeatCard(box, kind === 'dead');
   }
   o.replaceChildren(box); o.hidden = false;
+  document.body.classList.add('overlay-open');
+  updateCat();
 }
 
-ctl.subscribe(() => { renderBar(); renderBanner(); renderOverlay(); });
+ctl.subscribe(() => { renderBar(); renderBanner(); renderOverlay(); updateCat(); });
 stats.onChange(renderBar);
 settings.onChange(() => { renderBar(); renderBanner(); });
 renderBar();
 
+$('menuBtn').innerHTML = icon('menu', 24);
+$('undoBtn').innerHTML = icon('undo', 24);
 $('undoBtn').onclick = () => ctl.undo();
 $('finishBtn').onclick = () => ctl.autoFinish();
 
@@ -102,9 +181,9 @@ function toggleMenu() {
   const m = $('menu');
   if (!m.hidden) { m.hidden = true; return; }
   m.replaceChildren();
-  const items = [['New Game', requestNew], ['Game summary', () => openSummary(ctx)], ['Stats and history', () => openStats(ctx)], ['Settings', () => openSettings(ctx)]];
-  for (const [label, fn] of items) {
-    const b = mk('button', '', label); b.setAttribute('role', 'menuitem');
+  const items = [['plus', 'New game', requestNew], ['list', 'Game summary', () => openSummary(ctx)], ['bars', 'Stats and history', () => openStats(ctx)], ['sliders', 'Settings', () => openSettings(ctx)]];
+  for (const [ic, label, fn] of items) {
+    const b = mk('button', ''); b.innerHTML = icon(ic, 20) + '<span>' + label + '</span>'; b.setAttribute('role', 'menuitem');
     b.onclick = () => { m.hidden = true; fn(); };
     m.append(b);
   }
@@ -122,7 +201,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('menu').
 export function toast(text, actionLabel, action) {
   const t = $('toast'); t.replaceChildren(mk('span', '', text));
   if (actionLabel) { const b = mk('button', 'btn', actionLabel); b.onclick = () => { t.hidden = true; action(); }; t.append(b); }
-  const x = mk('button', 'icon-btn', '✕'); x.setAttribute('aria-label', 'Dismiss'); x.style.minWidth = '36px'; x.style.minHeight = '36px'; x.onclick = () => { t.hidden = true; };
+  const x = mk('button', 'icon-btn'); x.innerHTML = icon('close', 18); x.setAttribute('aria-label', 'Dismiss'); x.style.minWidth = '36px'; x.style.minHeight = '36px'; x.onclick = () => { t.hidden = true; };
   t.append(x); t.hidden = false;
 }
 

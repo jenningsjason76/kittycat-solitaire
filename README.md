@@ -12,8 +12,7 @@ This folder is the whole site. GitHub Pages serves it as it is (no build step) f
     ./tools/publish.sh "what you changed"
 
 That runs the rules tests (if Node.js is installed), raises the version in `sw.js`, commits and pushes.
-The site updates about a minute later. Or do it by hand: `git add -A`, `git commit -m "..."`, `git push`
-(and raise `VERSION` in `sw.js` yourself).
+The site updates about a minute later.
 
 ## Put it on GitHub Pages (free)
 
