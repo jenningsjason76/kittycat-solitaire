@@ -138,6 +138,79 @@ def emblem(deck, rank, color, gold):
     if rank == 12: return f'<g>{laurel(gold)}<g transform="translate(0 -40)">{crown(color, .55)}</g><g transform="translate(0 18)">{books(color, gold)}</g></g>'
     return f'<g>{laurel(gold)}<g transform="translate(4 0)">{quill(color, gold)}</g></g>'
 
+
+# ---------- Reading Room court figures: faceless engraved busts, double-ended, cut on the diagonal ----------
+# Local coordinates: origin at the base of the neck, y grows downward. Kings wear a crown and hold a sword, an axe,
+# an orb or a sceptre (one per suit, as in the English pattern); queens a coronet and a flower; jacks a cap and a pike,
+# a halberd, an arrow or a leaf. Engraving is suggested with hatch lines in the suit colour at low opacity.
+def hatch_defs(ink, color, gold):
+    return (f'<pattern id="hh" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><path d="M0 2.5h5" stroke="{color}" stroke-width="1" opacity=".5"/></pattern>'
+            f'<pattern id="hg" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(55)"><path d="M0 2h4" stroke="{gold}" stroke-width="1.2" opacity=".75"/></pattern>'
+            f'<pattern id="hd" width="3.4" height="3.4" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><path d="M0 1.7h3.4" stroke="{ink}" stroke-width="1" opacity=".65"/></pattern>')
+
+def bust(rank, suit, ink, color, gold, paper):
+    o = [f'<g stroke="{ink}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">']
+    # robe and shoulders, cut square well below the diagonal
+    o.append(f'<path d="M-64 94C-62 40-44 12-18 2 -8 -2 8 -2 18 2 44 12 62 40 64 94Z" fill="{paper}"/>'
+             f'<path d="M-64 94C-62 40-44 12-18 2 -8 -2 8 -2 18 2 44 12 62 40 64 94Z" fill="url(#hh)" stroke="none"/>')
+    # fold lines
+    o.append(f'<path d="M-30 20C-36 44-40 70-42 94M30 20C36 44 40 70 42 94M-10 14C-12 40-12 70-11 94M10 14C12 40 12 70 11 94" fill="none" stroke-width="1" opacity=".55"/>')
+    # collar: ermine band for the king and queen, a plain band for the jack
+    if rank == 11:
+        o.append(f'<path d="M-24 4C-10 16 10 16 24 4 20 14 10 22 0 24-10 22-20 14-24 4Z" fill="{paper}"/>')
+    else:
+        o.append(f'<path d="M-30 4C-16 20 16 20 30 4L36 16C20 34-20 34-36 16Z" fill="url(#hg)" stroke-width="1.4"/>'
+                 f'<path d="M-30 4C-16 20 16 20 30 4L36 16C20 34-20 34-36 16Z" fill="none"/>'
+                 f'<g fill="{ink}" stroke="none"><circle cx="-18" cy="18" r="1.6"/><circle cx="0" cy="23" r="1.6"/><circle cx="18" cy="18" r="1.6"/></g>')
+    # neck and head (no face: the shadow side is hatched)
+    o.append(f'<path d="M-9 4C-9 -6 9 -6 9 4" fill="{paper}"/>')
+    o.append(f'<ellipse cx="0" cy="-26" rx="17" ry="21" fill="{paper}"/><path d="M4-47C16-44 20-30 16-14 12-8 6-5 0-5 8-12 12-26 10-36 8-42 6-45 4-47Z" fill="url(#hd)" stroke="none"/>')
+    if rank == 13:    # hair and beard
+        o.append(f'<path d="M-17-30C-24-14-22 4-14 10-8 14 8 14 14 10 22 4 24-14 17-30 14-18 10-10 0-10-10-10-14-18-17-30Z" fill="url(#hd)"/>'
+                 f'<path d="M-17-30C-22-42-14-52 0-52 14-52 22-42 17-30" fill="url(#hd)"/>')
+        o.append(f'<g transform="translate(0 -50) scale(.5)">{crown(gold, 1)}</g><g transform="translate(0 -50) scale(.5)" fill="none" stroke="{ink}" stroke-width="2"><path d="M-40 0V-32L-22-14 0-44 22-14 40-32V0Z"/></g>')
+    elif rank == 12:  # hair, veil, coronet
+        o.append(f'<path d="M-17-34C-26-40-28-18-22 4L-30 20C-24 8-20-10-17-26M17-34C26-40 28-18 22 4L30 20C24 8 20-10 17-26" fill="url(#hd)"/>'
+                 f'<path d="M-17-32C-18-46-8-54 0-54 8-54 18-46 17-32" fill="url(#hd)"/>')
+        o.append(f'<g fill="{gold}"><path d="M-16-50L-12-62-6-52 0-66 6-52 12-62 16-50Z"/><rect x="-16" y="-50" width="32" height="4" rx="1"/></g>'
+                 f'<path d="M-16-50L-12-62-6-52 0-66 6-52 12-62 16-50Z" fill="none" stroke-width="1.2"/>')
+    else:             # jack: bobbed hair and a flat cap with a feather
+        o.append(f'<path d="M-17-30C-20-10-18 0-12 4L-8 2C-14-6-14-20-12-32ZM17-30C20-10 18 0 12 4L8 2C14-6 14-20 12-32Z" fill="url(#hd)"/>')
+        o.append(f'<path d="M-22-44C-22-52 22-52 22-44L24-40H-24Z" fill="{gold}"/><ellipse cx="0" cy="-46" rx="23" ry="6" fill="{gold}"/>'
+                 f'<path d="M14-50C22-62 30-68 40-70 34-62 26-54 16-48" fill="{paper}" stroke-width="1.2"/>')
+    # the held item (right side, over the shoulder); one per suit
+    item = {("13", "h"): "sword", ("13", "s"): "sword", ("13", "d"): "axe", ("13", "c"): "orb",
+            ("12", "h"): "rose", ("12", "s"): "sceptre", ("12", "d"): "tulip", ("12", "c"): "thistle",
+            ("11", "s"): "pike", ("11", "d"): "halberd", ("11", "c"): "arrow", ("11", "h"): "leaf"}[(str(rank), suit)]
+    g = f'<g transform="translate(-48 60) rotate(16)">'
+    if item == "sword": g += f'<path d="M0 10V-96" stroke-width="3"/><path d="M-12-70H12" stroke-width="3"/><circle cx="0" cy="12" r="4" fill="{gold}"/><path d="M-3-96L0-108 3-96Z" fill="{ink}"/>'
+    elif item == "axe": g += f'<path d="M0 10V-92" stroke-width="3"/><path d="M0-90C-22-90-28-74-24-60L0-62Z" fill="{color}" opacity=".85"/>'
+    elif item == "orb": g = f'<g transform="translate(-42 36)"><circle r="12" fill="{gold}"/><path d="M-12 0H12M0-12V12" stroke-width="1.2"/><path d="M0-12V-22M-5-17H5" stroke-width="2"/>'
+    elif item == "sceptre": g += f'<path d="M0 10V-80" stroke-width="3"/><circle cx="0" cy="-86" r="7" fill="{gold}"/><circle cx="0" cy="-86" r="7" fill="none"/>'
+    elif item in ("rose", "tulip", "thistle"):
+        g = f'<g transform="translate(-42 44) rotate(10)"><path d="M0 10C-2-20 2-40 0-70" stroke-width="2" fill="none"/><path d="M0-30C-14-34-18-44-14-50 -4-46 0-40 0-30ZM2-46C14-50 18-60 14-66 4-62 2-56 2-46Z" fill="url(#hg)"/>'
+        if item == "rose": g += f'<circle cx="0" cy="-78" r="9" fill="{color}" opacity=".85"/><circle cx="0" cy="-78" r="4.5" fill="none" stroke="{paper}" stroke-width="1.2"/>'
+        elif item == "tulip": g += f'<path d="M-8-70C-10-82-6-90 0-92 6-90 10-82 8-70 4-66-4-66-8-70Z" fill="{color}" opacity=".85"/>'
+        else: g += f'<path d="M-7-72C-9-82-4-90 0-92 4-90 9-82 7-72Z" fill="{color}" opacity=".85"/><path d="M-9-72H9L0-62Z" fill="url(#hg)"/>'
+    elif item == "pike": g += f'<path d="M0 10V-100" stroke-width="3"/><path d="M-5-100L0-118 5-100Z" fill="{ink}"/>'
+    elif item == "halberd": g += f'<path d="M0 10V-100" stroke-width="3"/><path d="M0-98C-18-96-22-78-14-66L0-70ZM0-96L8-110 2-80Z" fill="{color}" opacity=".85"/>'
+    elif item == "arrow": g += f'<path d="M0 10V-90" stroke-width="3"/><path d="M-6-90L0-104 6-90Z" fill="{ink}"/><path d="M0 4L-8 14M0 4L8 14M0-6L-8 4M0-6L8 4" stroke-width="2"/>'
+    else: g += f'<path d="M0 10C-2-20 2-40 0-70" stroke-width="2"/><path d="M0-70C-16-60-20-40-12-28 0-34 4-52 0-70ZM0-70C16-60 20-40 12-28 0-34-4-52 0-70Z" fill="url(#hg)"/>'
+    o.append(g + '</g></g>')
+    return "".join(o)
+
+def court_room(rank, suit, color, gold, ink, paper):
+    """The double-ended court for Reading Room: the frame, two clipped busts, the diagonal."""
+    x0, y0, x1, y1 = 58, 100, 192, 256
+    up = f'<clipPath id="cu"><polygon points="{x0},{y0} {x1},{y0} {x0},{y1}"/></clipPath>'
+    dn = f'<clipPath id="cd"><polygon points="{x1},{y1} {x1},{y0} {x0},{y1}"/></clipPath>'
+    b = bust(rank, suit, ink, color, gold, paper)
+    return (f'<defs>{up}{dn}{hatch_defs(ink, color, gold)}</defs>'
+            f'<g clip-path="url(#cu)"><g transform="translate(98 174) scale(.95)">{b}</g></g>'
+            f'<g clip-path="url(#cd)"><g transform="translate(152 182) rotate(180) scale(.95)">{b}</g></g>'
+            f'<path d="M{x0} {y1}L{x1} {y0}" stroke="{gold}" stroke-width=".9" opacity=".7"/>'
+            f'<rect x="{x0}" y="{y0}" width="{x1 - x0}" height="{y1 - y0}" rx="6" fill="none" stroke="{gold}" stroke-width="1.5"/>')
+
 # ---------- a card face ----------
 def pip_use(x, y, size, flip=False):
     t = f"translate({fmt(x)} {fmt(y)})" + (" rotate(180)" if flip else "") + f" translate({fmt(-size / 2)} {fmt(-size * .55)}) scale({fmt(size / 100)})"
@@ -169,6 +242,8 @@ def face(deck, P, rank, suit):
             o.append(f'<circle r="88" fill="none" stroke="{gold}" stroke-width="1.5"/><circle r="82" fill="none" stroke="{gold}" stroke-width=".8"/>')
             if suit == "s": o.append(f'<g transform="translate(72 76)">{cat(gold, .32)}</g>')
         o.append(pip_use(0, 2, 112) + "</g>")
+    elif rank > 10 and deck == "room":
+        o.append(court_room(rank, suit, color, gold, P["ink"], P["paper"]))
     elif rank > 10:
         o.append(f'<rect x="58" y="100" width="134" height="156" rx="6" fill="none" stroke="{gold}" stroke-width="1.5"/>')
         e = emblem(deck, rank, color, gold)

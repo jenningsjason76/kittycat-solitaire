@@ -13,7 +13,7 @@
 - Next phases agreed with Jason: richer Calm motion (lift shadow, settle, slow flip, foundation glow, auto-complete cascade) with a motion demo page, then quiet sounds matched to each motion, then landscape and iPhone (TestFlight). The design board with the three directions and the research behind them: https://claude.ai/artifact/3Eex6cKxCgyzTNC1zVdS12
 
 ## Known gaps and risks
-- The drawn decks were checked in Chromium on Linux only. Court cards are emblems, not figures; engraved court figures for Reading Room are still to draw.
+- The drawn decks were checked in Chromium on Linux only. Reading Room has faceless engraved court figures (double-ended, cut on the diagonal, items per suit as in the English pattern); Thorn & Star and Centre Ice keep emblem courts by decision.
 - Nothing tested in Safari or on a real iPhone. Motion speed on older phones is unknown. Victory sequences were checked from frames, not watched.
 - Draw 3 has a smaller solver budget for the dead-end check, so more dead ends may go unflagged.
 - The coach may now be too quiet (the early-foundation rule almost never fires on winning games).
