@@ -2,17 +2,22 @@
 const VERSION = 'v20261009204521';
 const CORE = `kittycat-core-${VERSION}`;
 const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
+const DECKS = ['thorn', 'ice', 'room'];      // the drawn SVG decks (cards/<deck>/), see js/decks.js
 
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'css/styles.css', 'css/paw-vars.css', 'css/textures.css',
   'js/main.js', 'js/engine.js', 'js/solver.js', 'js/critic.js', 'js/worker.js', 'js/solver-client.js',
   'js/store.js', 'js/board.js', 'js/dialogs.js', 'js/settings.js', 'js/stats.js', 'js/storage.js',
-  'js/audio.js', 'js/text.js', 'js/assets.js', 'js/cat.js', 'js/icons.js', 'js/victory.js',
+  'js/audio.js', 'js/text.js', 'js/assets.js', 'js/cat.js', 'js/icons.js', 'js/victory.js', 'js/decks.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
   'sounds/manifest.json',
   ...SUITS.flatMap((s) => Array.from({ length: 13 }, (_, i) => `cards/card_${s}_${i + 1}.webp`)),
   ...['blue', 'red', 'purple', 'yellow'].map((c) => `cards/card_back_${c}.webp`),
+  ...DECKS.flatMap((d) => [
+    ...SUITS.flatMap((s) => Array.from({ length: 13 }, (_, i) => `cards/${d}/card_${s}_${i + 1}.svg`)),
+    `cards/${d}/card_back_light.svg`, `cards/${d}/card_back_dark.svg`,
+  ]),
 ];
 
 self.addEventListener('install', (event) => {

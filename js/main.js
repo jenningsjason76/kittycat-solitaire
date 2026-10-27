@@ -1,12 +1,12 @@
 // Starts the app: wires the top bar, banner, overlays and the service worker.
-import { settings } from './settings.js';
+import { settings, firstRunWithDecks } from './settings.js';
 import { Stats } from './stats.js';
 import { SolverClient } from './solver-client.js';
 import { GameAudio } from './audio.js';
 import { GameController } from './store.js';
 import { Board } from './board.js';
 import { message } from './text.js';
-import { openMovesCheck, openSettings, openStats, openSummary, closeDialog } from './dialogs.js';
+import { openMovesCheck, openSettings, openStats, openSummary, openDeckPicker, closeDialog } from './dialogs.js';
 import { requestPersistence } from './storage.js';
 import { isWon } from './engine.js';
 import { catHTML, setCatState } from './cat.js';
@@ -219,6 +219,9 @@ window.addEventListener('pagehide', () => ctl.save());
   if (!(await ctl.restore())) await ctl.newGame();
   document.documentElement.dataset.ready = 'true';
   installHint();
+  // Players updating from the one-deck version choose a deck once; new players start on Classic and find the decks in Settings.
+  let picked = null; try { picked = localStorage.getItem('kittycat.deckPicked'); } catch { /* ignore */ }
+  if (firstRunWithDecks && !picked) openDeckPicker(ctx, { firstTime: true });
 })();
 
 function installHint() {

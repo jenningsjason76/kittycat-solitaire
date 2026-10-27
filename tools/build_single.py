@@ -15,7 +15,7 @@ MIME = {".webp": "image/webp", ".png": "image/png", ".wav": "audio/wav", ".mp3":
 def data_uri(p): return f"data:{MIME[os.path.splitext(p)[1]]};base64,{b64(p)}"
 
 # ---------- scripts: wrap each module so names cannot collide ----------
-ORDER = ["engine", "solver", "critic", "assets", "storage", "settings", "stats", "text", "audio",
+ORDER = ["engine", "solver", "critic", "assets", "decks", "storage", "settings", "stats", "text", "audio",
          "solver-client", "store", "cat", "icons", "victory", "board", "dialogs", "main"]
 IMPORT = re.compile(r"import\s*\{([^}]*)\}\s*from\s*'\./([\w-]+)\.js';", re.S)
 EXPORT = re.compile(r"^export\s+(?:async\s+)?(?:const|let|var|function|class)\s+([A-Za-z0-9_$]+)", re.M)
@@ -38,9 +38,9 @@ app += "window.__solver = __m[\"solver\"];\n"      # used when workers are unava
 
 # ---------- assets ----------
 assets = {}
-for p in sorted(glob.glob(os.path.join(ROOT, "cards", "*.webp"))) + sorted(glob.glob(os.path.join(ROOT, "sounds", "*"))):
+for p in sorted(glob.glob(os.path.join(ROOT, "cards", "*.webp"))) + sorted(glob.glob(os.path.join(ROOT, "cards", "*", "*.svg"))) + sorted(glob.glob(os.path.join(ROOT, "sounds", "*"))):
     rel = os.path.relpath(p, ROOT)
-    if rel.endswith((".mp3", ".wav", ".webp", ".json", ".txt")) and not rel.endswith("README.txt"):
+    if rel.endswith((".mp3", ".wav", ".webp", ".svg", ".json", ".txt")) and not rel.endswith("README.txt"):
         assets[rel] = data_uri(rel)
 
 # ---------- css ----------

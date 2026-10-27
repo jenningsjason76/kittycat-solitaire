@@ -4,6 +4,7 @@ import { titleFor } from './text.js';
 import { kvGet, kvSet, deviceId } from './storage.js';
 import { asset } from './assets.js';
 import { icon } from './icons.js';
+import { DECKS, DECK_IDS, faceURL, backURL } from './decks.js';
 
 function h(tag, cls, text) {
   const e = document.createElement(tag);
@@ -100,9 +101,14 @@ export function openSettings(ctx) {
     selectRow(s, 'Motion', 'motion', [['calm', 'Calm'], ['lively', 'Lively'], ['off', 'Off']]);
     selectRow(s, 'Victory', 'victory', [['random', 'Random'], ['fan', 'Fan and bow'], ['cascade', 'Soft cascade'], ['cat', 'Cat swats the kings'], ['riffle', 'Riffle'], ['off', 'None']]);
     selectRow(s, 'Card size', 'cardSize', [['large', 'Large'], ['medium', 'Medium'], ['small', 'Small']]);
-    selectRow(s, 'Table', 'tableStyle', [['calm', 'Calm'], ['paws', 'Cat paws']]);
+    const deckRow = h('div', 'row-item'); deckRow.append(h('span', '', 'Deck'));
+    const deckBtn = h('button', 'btn', DECKS[settings.get('deck')] ? DECKS[settings.get('deck')].name : 'Classic'); deckBtn.type = 'button';
+    deckBtn.onclick = () => openDeckPicker(ctx, { back: rebuild }); deckRow.append(deckBtn); s.append(deckRow);
+    const classic = settings.get('deck') === 'classic';
+    if (classic) selectRow(s, 'Table', 'tableStyle', [['calm', 'Calm'], ['paws', 'Cat paws']]);
     selectRow(s, 'Cat', 'catMode', [['off', 'Off (paw cues only)'], ['companion', 'On the table'], ['themeOnly', 'With the cat-paw table'], ['endScreens', 'Win and end screens (default)']]);
-    selectRow(s, 'Card back', 'cardBack', [['blue', 'Blue'], ['red', 'Red'], ['purple', 'Purple'], ['yellow', 'Gold'], ['paws', 'Cat paws']]);
+    if (classic) selectRow(s, 'Card back', 'cardBack', [['blue', 'Blue'], ['red', 'Red'], ['purple', 'Purple'], ['yellow', 'Gold'], ['paws', 'Cat paws']]);
+    else s.append(h('p', 'note', 'This deck brings its own table and card back, in light and dark.'));
     toggleRow(s, 'Zoom effect', 'zoomEffect');
     s.append(h('p', 'note', 'The zoom effect is turned off automatically when Reduce Motion is on.'));
 
@@ -137,7 +143,42 @@ export function openSettings(ctx) {
       try { const k = (await caches.keys()).find((n) => n.startsWith('kittycat-core-')); ver.textContent = k ? 'Version: ' + k.replace('kittycat-core-', '') : 'Version: not installed for offline use yet'; }
       catch { ver.textContent = 'Version: unknown'; }
     })();
-    s.append(h('p', 'note', 'Card artwork: English pattern playing cards deck (Wikimedia Commons), public domain (CC0).'));
+    s.append(h('p', 'note', 'Card artwork: Classic is the English pattern deck (Wikimedia Commons, CC0). Reading Room, Thorn & Star and Centre Ice were drawn for this game (CC0); see cards/CREDITS.txt for the number fonts.'));
+  });
+}
+
+// ---------- the deck chooser ----------
+
+const PICKED = 'kittycat.deckPicked';
+
+/** Four tiles, one per deck; a tap applies at once so the table behind the dialog shows it.
+ *  opts.firstTime adds the intro for players updating from the single-deck version; opts.back returns to Settings. */
+export function openDeckPicker(ctx, opts = {}) {
+  try { localStorage.setItem(PICKED, '1'); } catch { /* ignore */ }
+  const rebuild = () => openDeckPicker(ctx, { ...opts, firstTime: false });
+  open('Choose a deck', (body) => {
+    if (opts.firstTime) body.append(h('p', 'note', 'New: three decks drawn for this game, each with its own table in light and dark. Pick one now. You can change it any time in Settings.'));
+    const dark = document.documentElement.dataset.scheme === 'dark';
+    const grid = h('div', 'deck-grid'); grid.setAttribute('role', 'radiogroup'); grid.setAttribute('aria-label', 'Deck');
+    for (const id of DECK_IDS) {
+      const d = DECKS[id], on = settings.get('deck') === id;
+      const tile = h('button', 'deck-tile' + (on ? ' on' : '')); tile.type = 'button'; tile.dataset.deck = id;
+      tile.setAttribute('role', 'radio'); tile.setAttribute('aria-checked', String(on));
+      const fan = h('div', 'deck-fan');
+      const backSrc = backURL(id, dark);
+      for (const src of [backSrc, faceURL(37, id), faceURL(39, id)]) {    // back, Q♥, A♠
+        const img = h(src ? 'img' : 'div', 'deck-card' + (src ? '' : ' deck-card-css'));
+        if (src) { img.src = src; img.alt = ''; }
+        fan.append(img);
+      }
+      tile.append(fan, h('strong', '', d.name), h('span', 'note', d.line));
+      tile.onclick = () => { settings.set('deck', id); rebuild(); };
+      grid.append(tile);
+    }
+    body.append(grid);
+    const acts = h('div', 'actions');
+    const ok = h('button', 'btn primary', 'Done'); ok.onclick = () => { if (opts.back) opts.back(); else closeDialog(); }; acts.append(ok);
+    body.append(acts);
   });
 }
 

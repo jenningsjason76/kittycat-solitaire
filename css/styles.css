@@ -334,3 +334,83 @@ dialog h3 { font-family: var(--font-head); font-weight: 600; font-size: 14px; te
 .trail small { color: var(--panel-muted); margin-left: 8px; font-size: 13px; }
 .turn { margin: 6px 0 2px; font-size: 15px; }
 .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* =====================================================================
+   Design v3: the drawn decks. Each deck owns its table, chrome, panels and back,
+   in light and dark (html[data-deck], set by settings.js). Classic keeps everything above.
+   ===================================================================== */
+:root { --card-tint: #FFF1D6; --card-grain: .55; --table-pattern: none; --table-pattern-size: auto; }
+.card.up::before { background: var(--card-tint); }
+.card.up::after { opacity: var(--card-grain); }
+
+/* Reading Room: baize by day, lamplit leather by night */
+:root[data-deck="room"] { --felt: #5F7A5A; --table: #5F7A5A; --chrome: #16241A; --slot: #3C5A3F; --lamp: #C9A35A; --hl: #D2B06A;
+  --paper: #F3EAD6; --paper-edge: #D9C9A3; --ink: #241A14; --accent: #5A2222;
+  --panel: rgba(243, 234, 214, .94); --panel-text: #241A14; --panel-muted: #6A5A48; --line: rgba(36, 26, 20, .14);
+  --lamp-glow: rgba(255, 222, 160, .24); }
+:root[data-deck="room"][data-scheme="dark"] { --table: #3B2320; --chrome: #EFE3CC; --slot: #6A3F38; --accent: #C9A35A;
+  --panel: rgba(42, 28, 24, .95); --panel-text: #EFE3CC; --panel-muted: #B8A58E; --line: rgba(255, 240, 220, .14);
+  --lamp-glow: rgba(255, 190, 110, .13); --table-pattern: var(--leather); --table-pattern-size: 24px 24px; }
+:root { --leather: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M0 12h24' stroke='%23000' stroke-opacity='.10' stroke-width='1' transform='rotate(30 12 12)'/><path d='M12 0v24' stroke='%23fff' stroke-opacity='.035' stroke-width='1' transform='rotate(30 12 12)'/></svg>"); }
+
+/* Thorn & Star: dusk velvet by day, midnight plum by night, a few gold stars */
+:root[data-deck="thorn"] { --felt: #5B4A66; --table: #5B4A66; --chrome: #F6EFE3; --slot: #3E2F4A; --lamp: #C9A85F; --hl: #D8B76A;
+  --paper: #F6EFE3; --paper-edge: #D9CCB0; --ink: #2A2230; --accent: #6E3E6A;
+  --panel: rgba(246, 239, 227, .94); --panel-text: #2A2230; --panel-muted: #6A5F70; --line: rgba(42, 34, 48, .14);
+  --lamp-glow: rgba(240, 210, 150, .16); --table-pattern: var(--stars); --table-pattern-size: 260px 260px; }
+:root[data-deck="thorn"][data-scheme="dark"] { --table: #231A2E; --chrome: #F1E7D6; --slot: #3B2D48; --accent: #E0C27A;
+  --panel: rgba(47, 34, 56, .95); --panel-text: #F1E7D6; --panel-muted: #B9ACC2; --line: rgba(255, 240, 220, .14);
+  --lamp-glow: rgba(240, 200, 140, .10); }
+:root { --stars: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><g fill='%23E0C27A'><circle cx='22' cy='31' r='1.1' opacity='.55'/><circle cx='131' cy='12' r='.8' opacity='.4'/><circle cx='201' cy='54' r='1.3' opacity='.5'/><circle cx='74' cy='98' r='.7' opacity='.45'/><circle cx='245' cy='121' r='1' opacity='.35'/><circle cx='160' cy='140' r='.9' opacity='.5'/><circle cx='38' cy='176' r='1.2' opacity='.4'/><circle cx='110' cy='205' r='.7' opacity='.5'/><circle cx='213' cy='223' r='1.1' opacity='.45'/><circle cx='88' cy='246' r='.9' opacity='.35'/><circle cx='176' cy='84' r='.6' opacity='.5'/><circle cx='12' cy='120' r='.8' opacity='.4'/></g></svg>"); }
+
+/* Centre Ice: a pale rink by day, the arena at night; crisp white cards */
+:root[data-deck="ice"] { --felt: #DFE9EE; --table: #DFE9EE; --chrome: #17233A; --slot: #9FB3BF; --lamp: #D9892A; --hl: #D9892A;
+  --paper: #FBFCFD; --paper-edge: #C9D3DA; --ink: #17233A; --accent: #C8302E; --card-tint: #FFFFFF; --card-grain: .18;
+  --panel: rgba(251, 252, 253, .94); --panel-text: #17233A; --panel-muted: #55657C; --line: rgba(23, 35, 58, .14);
+  --lamp-glow: rgba(255, 255, 255, .5); --rink: rgba(200, 48, 46, .32); --rink-blue: rgba(50, 90, 170, .28); }
+:root[data-deck="ice"][data-scheme="dark"] { --table: #17233A; --chrome: #E6EDF2; --slot: #33465F; --accent: #F0A640;
+  --panel: rgba(31, 45, 71, .95); --panel-text: #E6EDF2; --panel-muted: #A9B6C8; --line: rgba(230, 237, 242, .14);
+  --lamp-glow: rgba(120, 160, 220, .14); --rink: rgba(217, 67, 63, .38); --rink-blue: rgba(90, 130, 210, .3); }
+
+:root[data-deck="room"] body, :root[data-deck="thorn"] body {
+  background-image:
+    linear-gradient(var(--tint), var(--tint)),
+    radial-gradient(120% 85% at 16% -4%, var(--lamp-glow), transparent 62%),
+    radial-gradient(150% 120% at 50% 45%, transparent 52%, rgba(8, 6, 12, .34)),
+    var(--table-pattern), var(--felt-grain);
+  background-size: auto, auto, auto, var(--table-pattern-size), 180px 180px;
+}
+:root[data-deck="ice"] body {
+  background-image:
+    linear-gradient(var(--tint), var(--tint)),
+    radial-gradient(120% 85% at 16% -4%, var(--lamp-glow), transparent 62%),
+    radial-gradient(circle at 50% 100%, transparent 29vmin, var(--rink) 29.2vmin, var(--rink) 29.9vmin, transparent 30.1vmin),
+    linear-gradient(to bottom, transparent calc(100% - 25vmin - 1px), var(--rink-blue) calc(100% - 25vmin - 1px), var(--rink-blue) calc(100% - 25vmin + 1px), transparent calc(100% - 25vmin + 1px)),
+    radial-gradient(150% 120% at 50% 45%, transparent 60%, rgba(10, 20, 40, .22));
+  background-size: auto;
+}
+:root[data-deck="ice"] .slot { box-shadow: inset 0 1px 4px rgba(10, 20, 40, .18); }
+
+/* panels in the dark: the coach's slip, menu, dialogs and end cards follow the deck */
+:root[data-deck="room"][data-scheme="dark"] #banner .box, :root[data-deck="room"][data-scheme="dark"] #overlay .box, :root[data-deck="room"][data-scheme="dark"] dialog, :root[data-deck="room"][data-scheme="dark"] #menu { background-color: #2A1C18; color: #EFE3CC; border-color: #4A3A30; }
+:root[data-deck="thorn"][data-scheme="dark"] #banner .box, :root[data-deck="thorn"][data-scheme="dark"] #overlay .box, :root[data-deck="thorn"][data-scheme="dark"] dialog, :root[data-deck="thorn"][data-scheme="dark"] #menu { background-color: #2F2238; color: #F1E7D6; border-color: #4E3F5C; }
+:root[data-deck="ice"][data-scheme="dark"] #banner .box, :root[data-deck="ice"][data-scheme="dark"] #overlay .box, :root[data-deck="ice"][data-scheme="dark"] dialog, :root[data-deck="ice"][data-scheme="dark"] #menu { background-color: #1F2D47; color: #E6EDF2; border-color: #3A4D6E; }
+:root[data-deck="ice"] #banner .box, :root[data-deck="ice"] #overlay .box, :root[data-deck="ice"] dialog, :root[data-deck="ice"] #menu { background-image: none; }
+:root[data-deck="thorn"] .btn.primary, :root[data-deck="room"] .btn.primary { color: #FBF7EE; }
+:root[data-deck="thorn"][data-scheme="dark"] .btn.primary, :root[data-deck="room"][data-scheme="dark"] .btn.primary { color: #1E1510; }
+:root[data-deck="ice"] .btn.primary { color: #FFFFFF; }
+:root[data-deck="ice"][data-scheme="dark"] .btn.primary { color: #17233A; }
+
+/* the deck chooser */
+.deck-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 10px; }
+.deck-tile { display: grid; gap: 4px; padding: 12px 12px 14px; border-radius: 16px; border: 2px solid var(--line); background: color-mix(in srgb, var(--panel) 60%, transparent);
+  color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.deck-tile.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.deck-tile strong { font-family: var(--font-head); font-size: 17px; }
+.deck-tile .note { margin: 0; }
+.deck-fan { position: relative; height: 86px; margin-bottom: 4px; }
+.deck-card { position: absolute; top: 6px; width: 50px; height: 70px; border-radius: 5px; box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 4px 10px rgba(0,0,0,.18); background: #fff; object-fit: fill; }
+.deck-card:nth-child(1) { left: 4px; transform: rotate(-9deg); }
+.deck-card:nth-child(2) { left: 36px; top: 2px; z-index: 1; }
+.deck-card:nth-child(3) { left: 68px; transform: rotate(9deg); }
+.deck-card-css { background-color: #3F5F7A; background-image: url("../cards/card_back_blue.webp"); background-size: 100% 100%; }

@@ -1,9 +1,9 @@
 // The board: draws piles, handles drag and tap, and the magnifying-glass zoom.
 import {
-  K, DRAW, isUp, assetName, cardName, legalMoves, bestMove, canDraw, SUIT_SYMBOL, moveEq,
+  K, DRAW, isUp, cardName, legalMoves, bestMove, canDraw, SUIT_SYMBOL, moveEq,
 } from './engine.js';
 import { settings, CARD_SCALE, motionScale } from './settings.js';
-import { asset } from './assets.js';
+import { faceURL } from './decks.js';
 import { catHTML } from './cat.js';
 
 const kindOf = (key) => (key === 's' ? K.STOCK : key === 'w' ? K.WASTE : key[0] === 'f' ? K.FOUND : K.TAB);
@@ -35,7 +35,7 @@ export class Board {
     root.addEventListener('pointerup', (e) => this.onUp(e, false));
     root.addEventListener('pointercancel', (e) => this.onUp(e, true));   // interrupted drags snap back
     root.addEventListener('keydown', (e) => this.onKey(e));
-    settings.onChange((k) => { if (k === 'cardSize' || k === '*') this.relayout(); if (k === 'catMode' || k === 'tableStyle' || k === '*') this.mountCat(); });
+    settings.onChange((k) => { if (k === 'cardSize' || k === 'deck' || k === '*') this.relayout(); if (k === 'catMode' || k === 'tableStyle' || k === '*') this.mountCat(); });
     this.mountCat();
   }
 
@@ -101,7 +101,7 @@ export class Board {
     e.dataset.pile = pileKey; e.dataset.count = String(count); e.dataset.id = String(c & 63);
     e.style.transform = `translateY(${y}px)`;
     if (isUp(c)) {
-      e.style.backgroundImage = `url("${asset(`cards/${assetName(c)}.webp`)}")`;
+      e.style.backgroundImage = `url("${faceURL(c, settings.get('deck'))}")`;
       e.setAttribute('aria-label', cardName(c));
       if (interactive) { e.setAttribute('role', 'button'); e.tabIndex = 0; } else e.classList.add('static');
     } else {

@@ -1,8 +1,7 @@
 // Four short victory sequences, picked at random (never the same twice in a row).
 // Each runs 4.5 seconds at most, a tap skips it, and it does nothing when Motion is Off or Reduce Motion is on.
 import { settings, motionScale } from './settings.js';
-import { asset } from './assets.js';
-import { assetName } from './engine.js';
+import { faceURL } from './decks.js';
 import { catHTML } from './cat.js';
 
 export const STYLES = ['fan', 'cascade', 'cat', 'riffle'];
@@ -27,7 +26,7 @@ function makeCards(board, layer) {
       const c = document.createElement('div');
       c.className = 'card up vcard';
       c.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${cw}px;height:${ch}px;z-index:${rank};`;
-      c.style.backgroundImage = `url("${asset(`cards/${assetName(s * 13 + rank - 1)}.webp`)}")`;
+      c.style.backgroundImage = `url("${faceURL(s * 13 + rank - 1, settings.get('deck'))}")`;
       layer.appendChild(c);
       cards.push({ el: c, s, rank, x0: r.left, y0: r.top });
     }

@@ -8,12 +8,14 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 - `python3 -m http.server 8765`, then open http://127.0.0.1:8765/ to play.
 - `./tools/publish.sh "message"`: runs the rules tests, stamps a new version in `sw.js`, commits and pushes. Only when I ask.
 - `python3 tools/build_single.py [--hosted]`: optional one-file builds into `dist/` and `dist-hosted/` (git-ignored).
+- `python3 tools/cards/make_svg_decks.py`: redraws the three vector decks into `cards/thorn|ice|room/` (needs `pip install fonttools`; the fonts it reads are listed at the top of the script).
 
 ## Layout (`js/`)
 - `engine.js` rules, scoring, `stateKey`, `boardKey`. `solver.js` + `worker.js` + `solver-client.js` DFS solver (winnable deals, win/lost proofs).
 - `critic.js` the coach's rules. `text.js` the wording. `store.js` `GameController`: the only owner of game state (undo, dead ends, replay, autosave).
 - `board.js` renders cards, drag, and motion (FLIP flights, flips, deal). `main.js` bar, banner, end cards, cat state. `dialogs.js` settings, stats, summary.
 - `solver.js` also has `findProgress`. `victory.js` four victory sequences. `cat.js` the cat SVG and states. `icons.js` line icons. `audio.js`, `settings.js`, `stats.js`, `storage.js`, `assets.js`.
+- `decks.js` the four decks (`classic` webp, plus `room`, `thorn`, `ice` drawn as SVG), `faceURL`, `backURL`, `deckFiles`. The `deck` setting puts `data-deck` on `<html>`; the "Design v3" block in `styles.css` gives each drawn deck its table, panels and back in light and dark.
 - `css/styles.css` (the "Design v2" block at the end overrides the older look), `css/textures.css`, `sw.js` (offline cache), `cards/` and `sounds/` (CC0; keep the CREDITS files).
 - Tests poke `window.kittycat` (`ctl`, `settings`, `stats`, `fx`).
 
@@ -26,6 +28,8 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 - "Any moves left?" (menu): breadth-first search for ANY way to make progress (a card to a foundation, or a face-down card turned over), including drawing and shuffling columns (`findProgress` in `solver.js`, budget 30000 nodes). `none` shows the "No more moves." card. It is different from the dead-end prompt, which needs a solver proof that the deal cannot be won; a lost deal can still have moves.
 - Updates: a home-screen app on iPhone is frozen and resumed, so the page calls `reg.update()` on return to the app, on reconnect and hourly (`main.js`). Settings > About > Version shows the cache version (`kittycat-core-<stamp>`); `publish.sh` prints the same stamp. Never tell anyone to delete and re-add the home-screen icon: it can erase saved games and stats (IndexedDB).
 - Card corner numbers are large and heavy (rebuild with `tools/cards/`, see its README).
+- Decks: Classic keeps the old Table and Card back settings; a drawn deck owns its table, chrome and back (those two rows disappear in Settings). Default stays Classic; a player updating from the one-deck version sees "Choose a deck" once (saved settings without a `deck` key, `firstRunWithDecks`). The deck chooser shows a back, Q♥ and A♠ per deck. Every drawn deck hides a cat (moon, puck, books) and `tests/decks.test.mjs` checks it is still there.
+- The drawn decks are generated, never hand-edited: change `tools/cards/make_svg_decks.py` and rerun it. A new deck goes in `DECKS` there, in `js/decks.js`, in `DECKS` in `sw.js`, and in the CSS block.
 - Look: moss felt, lamp gold, paper cards, system serif headlines, system rounded sans. Motion default Calm. Victory: random among four, never the same twice in a row.
 
 ## Rules of the road

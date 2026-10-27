@@ -1,4 +1,5 @@
 // Settings live in localStorage (small, read synchronously) and are applied to <html>.
+import { DECKS, deckId, backURL } from './decks.js';
 
 export const DEFAULTS = {
   drawMode: 1, scoringMode: 'standard', winnableDeals: true, tapToMove: false, catMode: 'endScreens', motion: 'calm', victory: 'random', light: 'auto',
@@ -6,15 +7,20 @@ export const DEFAULTS = {
   appearance: 'system', cardSize: 'large', tableStyle: 'calm', cardBack: 'blue', zoomEffect: true,
   soundsOn: true, effectsOn: true, effectsLevel: 'subtle', musicOn: false, musicLevel: 'subtle',
   hapticLevel: 'subtle',
+  deck: 'classic',
 };
 
 const KEY = 'kittycat.settings.v1';
 const listeners = new Set();
 let values = { ...DEFAULTS };
+/** True when settings were saved by a version without decks: an existing player who has not seen the deck chooser. */
+export let firstRunWithDecks = false;
 
 try {
-  const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+  const raw = localStorage.getItem(KEY);
+  const saved = JSON.parse(raw || '{}');
   for (const k of Object.keys(DEFAULTS)) if (k in saved && typeof saved[k] === typeof DEFAULTS[k]) values[k] = saved[k];
+  firstRunWithDecks = !!raw && !('deck' in saved);
 } catch { /* first run */ }
 
 export const settings = {
@@ -59,15 +65,23 @@ export function apply() {
   const a = values.appearance;
   const dark = a === 'dark' || (a === 'system' && media && media.matches);
   root.dataset.scheme = dark ? 'dark' : 'light';
-  root.dataset.table = values.tableStyle;
-  root.dataset.back = values.cardBack;
+  const deck = deckId(values.deck);
+  root.dataset.deck = deck;
+  // a drawn deck owns the table and the back; the Classic deck keeps the Table and Card back settings
+  root.dataset.table = deck === 'classic' ? values.tableStyle : 'calm';
+  root.dataset.back = deck === 'classic' ? values.cardBack : 'deck';
+  if (deck === 'classic') root.style.removeProperty('--back-img');
+  else {
+    const u = backURL(deck, dark);     // absolute: a relative url() in an inline custom property resolves against the stylesheet in Chrome
+    root.style.setProperty('--back-img', `url("${u.startsWith('data:') ? u : new URL(u, document.baseURI).href}")`);
+  }
   root.dataset.size = values.cardSize;
   root.dataset.zoom = values.zoomEffect && !reducedMotion() ? 'on' : 'off';
   root.dataset.light = values.light === 'day' ? 'day' : values.light === 'evening' ? 'dusk' : lightPhase();
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
     const colors = { calm: dark ? '#17241E' : '#7F9F8C', paws: dark ? '#2A2433' : '#BBAECB' };
-    meta.setAttribute('content', colors[values.tableStyle] || colors.calm);
+    meta.setAttribute('content', deck === 'classic' ? colors[values.tableStyle] || colors.calm : DECKS[deck].theme[dark ? 'dark' : 'light']);
   }
 }
 if (media && media.addEventListener) media.addEventListener('change', apply);

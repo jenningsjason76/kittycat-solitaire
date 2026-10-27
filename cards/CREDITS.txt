@@ -3,3 +3,10 @@ Assembled by Loren Osborn (2024), based on a deck by Guy Vandegrift; most cards 
 Source: https://commons.wikimedia.org/wiki/File:English_pattern_playing_cards_deck_PLUS_CC0.svg
 Changes made for this app: cropped into single images; the corner numbers were redrawn about twice as large and with heavier strokes (rank and suit from the original art).
 CC0 requires no credit; this note is a courtesy.
+
+The three drawn decks (cards/thorn, cards/ice, cards/room: "Thorn & Star", "Centre Ice", "Reading Room")
+were made for this app by tools/cards/make_svg_decks.py and are released under CC0 like the rest of the artwork.
+Their corner numbers are glyph outlines taken from open fonts (the outlines are embedded as paths; no font files ship):
+- Thorn & Star: FreeSerif Bold, GNU FreeFont (GPLv3 with the font-embedding exception), https://www.gnu.org/software/freefont/
+- Reading Room: Liberation Serif Bold (SIL Open Font License 1.1), https://github.com/liberationfonts/liberation-fonts
+- Centre Ice: Inter ExtraBold (SIL Open Font License 1.1), https://rsms.me/inter/
