@@ -216,7 +216,7 @@ export class GameController {
     this.activeEntryId = null; this.revealedEntryId = null; this.highlight = null;
     this.deadEnd = null;
 
-    if (judge) this.fx.play(move[0] === K.STOCK ? 'draw' : move[2] === K.FOUND ? 'foundation' : 'place');
+    this.fx.cue(move[0] === K.STOCK ? 'draw' : move[2] === K.FOUND ? 'foundation' : 'place');     // the board times it to the motion
 
     if (tracking) {
       const found = critique(before, move);

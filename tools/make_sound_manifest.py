@@ -7,7 +7,7 @@ import json, os, re
 d = os.path.join(os.path.dirname(__file__), "..", "sounds")
 files = sorted(os.listdir(d))
 groups = {}
-for g in ("place", "slide", "tick", "win"):
+for g in ("place", "slide", "flip", "found", "tick", "win"):
     groups[g] = [f for f in files if re.fullmatch(rf"{g}(_\d+)?\.(wav|mp3|m4a|caf)", f)]
 music = [f for f in files if re.fullmatch(r"music_\d+\.(m4a|mp3)", f)]
 manifest = {"effects": {k: v for k, v in groups.items() if v}, "music": music}

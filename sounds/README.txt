@@ -2,6 +2,8 @@ Sound files used by the app. All are CC0 (see SoundCredits.txt).
 
   place_1..4.wav   card set down (also cards sent to a foundation)
   slide_1..4.wav   draw from the stock
+  flip.wav         a card turning over (timed to the flip)
+  found_1..3.wav   a soft chime when a card reaches a foundation (timed to the landing; rises during auto-complete)
   tick.wav         the quiet lazy-move note
   win.wav          the short win jingle
   music_1.mp3, music_2.mp3   optional quiet piano music (off until turned on in Settings)

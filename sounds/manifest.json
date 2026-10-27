@@ -12,6 +12,14 @@
       "slide_3.wav",
       "slide_4.wav"
     ],
+    "flip": [
+      "flip.wav"
+    ],
+    "found": [
+      "found_1.wav",
+      "found_2.wav",
+      "found_3.wav"
+    ],
     "tick": [
       "tick.wav"
     ],

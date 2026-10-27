@@ -36,6 +36,7 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 ## Rules of the road
 - Run the narrowest relevant test after a change: engine, solver or critic -> `npm test`; board or motion -> `drag motion`; victory or cat -> `victory cat`; settings or dialogs -> `feedback_settings_stats`. Run everything before publishing.
 - The solver must never call a winnable position lost (`tests/deadend.test.mjs`). Never weaken that test.
+- Sounds follow the motion: `store.js` cues a move's sound (`fx.cue`), `board.js` claims it with the landing delay (`fx.claim`) and plays the flip itself. `tools/make_sounds.py` synthesises `flip.wav` and `found_*.wav`; `tools/make_sound_manifest.py` lists the groups.
 - Every animation must respect `motionScale()` (0 means none). It already covers Reduce Motion and the Motion setting. The numbers live in `MOTION` in `board.js` (flight 230 ms, lift 1.05, settle 1.02, flip 300 ms, stagger 16, deal 340/26, pick-up 120, snap 240; auto-finish beat 105 ms in `store.js`); the Motion Lab page (see HANDOFF) carries the same sliders.
 - A new file under `js/`, `css/` or `icons/` must be added to `SHELL` in `sw.js` and, for the one-file build, to `ORDER` in `tools/build_single.py`. Do not otherwise edit `VERSION` in `sw.js`; `publish.sh` stamps it.
 - `Board.render()` rebuilds the card elements on every emit. Do not keep element references across renders.

@@ -233,7 +233,12 @@ export class Board {
       return;
     }
     if (last && last[2] === K.FOUND) this.pulse('f' + last[3]);
-    if (!this.noAnim && scale) this.flight(prev, last, scale);
+    const moving = !this.noAnim && scale;
+    // the sound of the move lands with the card: a draw starts as the card leaves, a card set down sounds at the settle
+    const land = moving ? MOTION.flight.dur * scale * MOTION.settle.at : 0;
+    this.cascade = this.ctl.isAutoFinishing ? (this.cascade || 0) + 1 : 0;
+    this.ctl.fx.claim({ draw: 0, place: land, foundation: land }, { rate: this.cascade ? Math.min(1.5, 1 + this.cascade * 0.025) : 1 });
+    if (moving) this.flight(prev, last, scale);
   }
 
   /** Keeps a moving card above its neighbours while it travels. */
@@ -255,6 +260,7 @@ export class Board {
     ghost.style.transform = base === 'none' ? 'translateY(0px)' : base;
     card.after(ghost);
     const g = ghost.animate([{ transform: f(0) }, { transform: f(90) }], { duration: half, delay, easing: 'ease-in', fill: 'both' });
+    this.ctl.fx.play('flip', delay + half * 0.8);                    // the paper sounds as the face comes round
     const gone = () => ghost.remove();
     g.finished.then(gone, gone);
     // the face: edge-on until the back has turned, then turns in and overshoots a touch

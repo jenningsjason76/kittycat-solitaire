@@ -6,7 +6,8 @@ import { asset } from './assets.js';
 
 const LEVEL_SFX = { subtle: 0.3, full: 0.7 };
 const LEVEL_MUSIC = { subtle: 0.22, full: 0.55 };
-const EVENT_GROUP = { place: 'place', foundation: 'place', draw: 'slide', flagged: 'tick', win: 'win', denied: null };
+const EVENT_GROUP = { place: 'place', foundation: 'found', draw: 'slide', flip: 'flip', flagged: 'tick', win: 'win', denied: null };
+const FALLBACK = { found: 'place' };          // an older cache without the chime still gets a sound
 
 const VIBRATE = {
   subtle: { place: 8, draw: 8, foundation: 10, flagged: 12, win: [20, 40, 20], denied: 6 },
@@ -24,6 +25,7 @@ export class GameAudio {
     this.musicIndex = 0;
     this.musicOrder = [];
     this.ready = false;
+    this.pending = null;        // a cued sound the board has not claimed yet
     try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch { /* not supported */ }
     document.addEventListener('visibilitychange', () => this.refreshMusic());
     settings.onChange(() => this.refreshMusic());
@@ -53,10 +55,26 @@ export class GameAudio {
     this.refreshMusic();
   }
 
-  play(event) {
-    this.haptic(event);
+  /** Cue a move's sound. The board claims it and times it to the motion (the landing, the turn); if nothing
+   *  claims it by the next tick (no board, Motion off), it just plays. */
+  cue(event) {
+    if (this.pending) { clearTimeout(this.pending.timer); this.play(this.pending.event); }
+    const p = { event, timer: setTimeout(() => { if (this.pending === p) { this.pending = null; this.play(event); } }, 0) };
+    this.pending = p;
+  }
+
+  /** The board takes the cued sound and plays it `delays[event]` ms from now (0 when motion is off). */
+  claim(delays, opts) {
+    const p = this.pending; if (!p) return;
+    clearTimeout(p.timer); this.pending = null;
+    this.play(p.event, delays[p.event] || 0, opts);
+  }
+
+  play(event, delayMs = 0, { rate = 1 } = {}) {
+    if (delayMs > 0) setTimeout(() => this.haptic(event), delayMs); else this.haptic(event);
     if (!this.ctx || !settings.get('soundsOn') || !settings.get('effectsOn')) return;
-    const group = EVENT_GROUP[event];
+    let group = EVENT_GROUP[event];
+    if (group && !(this.buffers[group] || []).length) group = FALLBACK[group];
     const list = group && this.buffers[group];
     if (!list || !list.length) return;
     let i = Math.floor(Math.random() * list.length);
@@ -64,11 +82,12 @@ export class GameAudio {
     this.last[group] = i;
     const src = this.ctx.createBufferSource();
     src.buffer = list[i];
-    src.playbackRate.value = 0.97 + Math.random() * 0.06;
+    src.playbackRate.value = (0.97 + Math.random() * 0.06) * rate;
     const gain = this.ctx.createGain();
-    gain.gain.value = LEVEL_SFX[settings.get('effectsLevel')] * (0.9 + Math.random() * 0.1);
+    const quiet = group === 'flip' ? 0.55 : group === 'found' ? 0.8 : 1;     // the paper and the bell sit under the card sounds
+    gain.gain.value = LEVEL_SFX[settings.get('effectsLevel')] * (0.9 + Math.random() * 0.1) * quiet;
     src.connect(gain).connect(this.ctx.destination);
-    src.start();
+    src.start(this.ctx.currentTime + Math.max(0, delayMs) / 1000);
   }
 
   haptic(event) {

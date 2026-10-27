@@ -8,6 +8,9 @@ SOUND EFFECTS (Kenney, kenney.nl)
 - Lazy-move tick (tick): "Interface Sounds" by Kenney, CC0. File tick_001.
 - Win jingle (win): "Music Jingles" by Kenney Vleugels, CC0. File jingles_STEEL02.
 
+SOUNDS MADE FOR THIS APP (CC0)
+- Card flip (flip) and the foundation chimes (found_1 to found_3): synthesised by tools/make_sounds.py for KittyCat Solitaire, CC0.
+
 MUSIC
 - "First Light Particles" by Yoiyami, CC0.
   https://opengameart.org/content/first-light-particles-%E2%80%93-cc0-atmospheric-pianoambient-track
