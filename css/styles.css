@@ -94,7 +94,7 @@ body {
 
 .card.dragging { position: fixed; z-index: 1000; pointer-events: none; transition: none; cursor: grabbing;
   filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); }
-.card.dragging.snap { transition: transform .22s ease; }
+.card.dragging.snap { transition: transform .24s cubic-bezier(.2,.9,.3,1.08); }
 
 /* magnifying-glass zoom while holding a card */
 html[data-zoom="on"] .board.dragging .pile:not(.focus) { opacity: .72; }
@@ -310,7 +310,10 @@ dialog h3 { font-family: var(--font-head); font-weight: 600; font-size: 14px; te
 .board.no-trans .pile { transition: none !important; }
 .board.animating-top .toprow { z-index: 3; }
 .pile.found.land .slot { animation: land .38s ease-out; }
-@keyframes land { 0% { box-shadow: inset 0 2px 6px rgba(8,22,15,.28), 0 0 0 0 rgba(227, 176, 75, .75); } 100% { box-shadow: inset 0 2px 6px rgba(8,22,15,.28), 0 0 0 14px rgba(227, 176, 75, 0); } }
+@keyframes land { 0% { box-shadow: inset 0 2px 6px rgba(8,22,15,.28), 0 0 0 0 color-mix(in srgb, var(--hl) 80%, transparent); } 100% { box-shadow: inset 0 2px 6px rgba(8,22,15,.28), 0 0 0 16px color-mix(in srgb, var(--hl) 0%, transparent); } }
+/* the legal drop target glows while a card is held over it; a flip ghost is the back of a card turning over */
+.pile.target .slot, .pile.target > .card.up:last-of-type, .pile.target > .card.down:last-of-type { box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--hl) 85%, transparent), 0 0 18px 2px color-mix(in srgb, var(--hl) 45%, transparent), var(--shadow-card); transition: box-shadow .12s ease-out; }
+.card.flip-ghost { pointer-events: none; z-index: 5; backface-visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .pile.found.land .slot { animation: none; } }
 
 /* victory */

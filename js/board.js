@@ -6,6 +6,31 @@ import { settings, CARD_SCALE, motionScale } from './settings.js';
 import { faceURL } from './decks.js';
 import { catHTML } from './cat.js';
 
+/** The numbers behind Calm motion. Every duration is multiplied by motionScale() (0 = none, 1 = Calm, 1.4 = Lively).
+ *  Keep in sync with the iPhone app and tools/motion-demo (the sliders page). */
+export const MOTION = {
+  flight: { dur: 230, stagger: 16, ease: 'cubic-bezier(.2,.9,.25,1.02)', easeLively: 'cubic-bezier(.3,1.35,.5,1)' },
+  lift: { scale: 1.05, at: 0.35 },      // a card rises a little while it travels...
+  settle: { scale: 1.02, at: 0.8 },     // ...and presses down as it lands
+  flip: { dur: 300 },                    // a revealed card turns over, back then face
+  deal: { dur: 340, stagger: 26 },
+  pickup: 120,                           // ms for the lift when a drag starts
+  snap: 240,                             // an illegal drop glides back
+};
+const SHADOW_FLAT = '0 1px 1px rgba(14,30,22,.24), 0 3px 9px rgba(14,30,22,.16)';
+const SHADOW_LIFT = '0 2px 2px rgba(14,30,22,.18), 0 14px 26px rgba(14,30,22,.36)';
+/** Keyframes for a card gliding from an offset (dx, dy) to where it is now, rising on the way and settling at the end. */
+export function flightFrames(dx, dy, base, scale) {
+  const b = base === 'none' ? '' : base;
+  const soft = scale >= 1;            // Lively and Calm lift and settle; the reduced scales just glide
+  return [
+    { transform: `translate(${dx}px, ${dy}px) ${b}`, boxShadow: SHADOW_FLAT, easing: 'ease-in', offset: 0 },
+    { transform: `translate(${dx * (1 - MOTION.lift.at)}px, ${dy * (1 - MOTION.lift.at)}px) ${b} scale(${soft ? MOTION.lift.scale : 1})`, boxShadow: soft ? SHADOW_LIFT : SHADOW_FLAT, easing: MOTION.flight.ease, offset: MOTION.lift.at },
+    { transform: `${b} scale(${soft ? MOTION.settle.scale : 1})`, boxShadow: soft ? SHADOW_LIFT : SHADOW_FLAT, easing: 'ease-out', offset: MOTION.settle.at },
+    { transform: base, boxShadow: SHADOW_FLAT, offset: 1 },
+  ];
+}
+
 const kindOf = (key) => (key === 's' ? K.STOCK : key === 'w' ? K.WASTE : key[0] === 'f' ? K.FOUND : K.TAB);
 const indexOf = (key) => (key.length > 1 ? Number(key.slice(1)) : 0);
 const keyOf = (kind, i) => (kind === K.STOCK ? 's' : kind === K.WASTE ? 'w' : (kind === K.FOUND ? 'f' : 't') + i);
@@ -192,7 +217,7 @@ export class Board {
     }
     this.root.classList.add('no-trans');                       // measure without the zoom easing back
     this.root.classList.remove('dragging', 'from-top');
-    this.root.querySelectorAll('.focus, .lens').forEach((p) => p.classList.remove('focus', 'lens'));
+    this.root.querySelectorAll('.focus, .lens, .target').forEach((p) => p.classList.remove('focus', 'lens', 'target'));
     this.afterRender(prev);
     requestAnimationFrame(() => this.root.classList.remove('no-trans'));
   }
@@ -221,13 +246,24 @@ export class Board {
   }
 
   turnOver(card, base, delay, scale) {
-    const f = (deg) => `${base === 'none' ? '' : base} perspective(520px) rotateY(${deg}deg)`;
-    card.animate([{ transform: f(88) }, { transform: f(0) }], { duration: 170 * scale, delay, easing: 'ease-out', fill: 'backwards' });
+    const b = base === 'none' ? '' : base;
+    const f = (deg) => `${b} perspective(600px) rotateY(${deg}deg)`;
+    const dur = MOTION.flip.dur * scale, half = dur / 2;
+    // the back: a ghost card over the face that turns edge-on, then goes
+    const ghost = el('div', 'card down static flip-ghost');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.transform = base === 'none' ? 'translateY(0px)' : base;
+    card.after(ghost);
+    const g = ghost.animate([{ transform: f(0) }, { transform: f(90) }], { duration: half, delay, easing: 'ease-in', fill: 'both' });
+    const gone = () => ghost.remove();
+    g.finished.then(gone, gone);
+    // the face: edge-on until the back has turned, then turns in and overshoots a touch
+    card.animate([{ transform: f(-90), offset: 0 }, { transform: f(-90), offset: 0.5 }, { transform: f(0), offset: 1 }],
+      { duration: dur, delay, easing: 'cubic-bezier(.2,.8,.3,1.05)', fill: 'backwards' });
   }
 
   flight(prev, last, scale) {
-    const dur = 180 * scale;
-    const easing = scale > 1 ? 'cubic-bezier(.3,1.35,.5,1)' : 'cubic-bezier(.2,.9,.3,1.03)';
+    const dur = MOTION.flight.dur * scale;
     let n = 0;
     this.root.querySelectorAll('.card[data-id]').forEach((c) => {
       const r = c.getBoundingClientRect();
@@ -237,9 +273,11 @@ export class Board {
       if (!p) return;
       const dx = p.x - r.left, dy = p.y - r.top;
       const base = c.style.transform || 'none';
-      const delay = (n++ % 8) * 14 * scale;
+      const delay = (n++ % 8) * MOTION.flight.stagger * scale;
       if (Math.abs(dx) + Math.abs(dy) > 1.5) {
-        const a = c.animate([{ transform: `translate(${dx}px, ${dy}px) ${base === 'none' ? '' : base}` }, { transform: base }], { duration: dur, delay, easing, fill: 'backwards' });
+        const frames = flightFrames(dx, dy, base, scale);
+        if (scale > 1) frames[1].easing = MOTION.flight.easeLively;
+        const a = c.animate(frames, { duration: dur, delay, fill: 'backwards' });
         this.lift(c, a);
       }
       if (!p.up && c.classList.contains('up')) this.turnOver(c, base, dur * 0.55, scale);
@@ -255,9 +293,8 @@ export class Board {
         if (!card) continue;
         const r = card.getBoundingClientRect();
         const base = card.style.transform || 'none';
-        const delay = k++ * 24 * scale, dur = 300 * scale;
-        const a = card.animate([{ transform: `translate(${from.left - r.left}px, ${from.top - r.top}px) ${base === 'none' ? '' : base}` }, { transform: base }],
-          { duration: dur, delay, easing: 'cubic-bezier(.2,.8,.25,1)', fill: 'backwards' });
+        const delay = k++ * MOTION.deal.stagger * scale, dur = MOTION.deal.dur * scale;
+        const a = card.animate(flightFrames(from.left - r.left, from.top - r.top, base, scale), { duration: dur, delay, fill: 'backwards' });
         this.lift(card, a);
         if (card.classList.contains('up')) this.turnOver(card, base, delay + dur * 0.8, scale);
       }
@@ -318,7 +355,7 @@ export class Board {
       c.style.transform = 'none';
       return c;
     });
-    this.drag = { items, candidates, rects, target: null, layer };
+    this.drag = { items, candidates, rects, target: null, layer, t0: performance.now() };
     this.root.classList.add('dragging');
     if (p.pile[0] === 'w' || p.pile[0] === 'f') this.root.classList.add('from-top');
     this.pileEl(p.pile)?.classList.add('focus', 'lens');
@@ -330,19 +367,22 @@ export class Board {
 
   moveDrag(e, dx, dy) {
     const d = this.drag; if (!d) return;
-    const lift = this.lensOn && document.documentElement.dataset.zoom === 'on' ? 1.12 : 1;
+    const ms = motionScale();
+    const target = this.lensOn && document.documentElement.dataset.zoom === 'on' ? 1.12 : (ms ? 1.04 : 1);
+    const t = ms ? Math.min(1, (performance.now() - d.t0) / (MOTION.pickup * ms)) : 1;      // the lift eases in over the first moments
+    const lift = 1 + (target - 1) * (1 - (1 - t) * (1 - t));
     const vx = dx - (d.lastDx === undefined ? dx : d.lastDx); d.lastDx = dx;
     d.tilt = (d.tilt || 0) * 0.8 + Math.max(-7, Math.min(7, vx * 0.7)) * 0.2;          // cards lean a little as you sweep them
-    const tilt = lift > 1 && motionScale() ? d.tilt : 0;
-    d.items.forEach((c) => { c.style.transform = `translate(${dx}px, ${dy}px) scale(${lift}) rotate(${tilt}deg)`; });
-    const target = d.candidates.find((m) => {
+    const tilt = ms ? d.tilt : 0;
+    d.items.forEach((c, i) => { c.style.transform = `translate(${dx}px, ${dy}px) scale(${lift}) rotate(${(tilt * (1 + i * 0.12)).toFixed(2)}deg)`; });
+    const drop = d.candidates.find((m) => {
       const r = d.rects[keyOf(m[2], m[3])];
       return r && e.clientX >= r.left - 12 && e.clientX <= r.right + 12 && e.clientY >= r.top - 12 && e.clientY <= r.bottom + 12;
     }) || null;
-    if (!d.target || !target || !moveEq(d.target, target)) {
-      if (d.target) this.piles[keyOf(d.target[2], d.target[3])]?.classList.remove('focus', 'lens');
-      if (target) this.piles[keyOf(target[2], target[3])]?.classList.add('focus', 'lens');
-      d.target = target;
+    if (!d.target || !drop || !moveEq(d.target, drop)) {
+      if (d.target) this.piles[keyOf(d.target[2], d.target[3])]?.classList.remove('focus', 'lens', 'target');
+      if (drop) this.piles[keyOf(drop[2], drop[3])]?.classList.add('focus', 'lens', 'target');
+      d.target = drop;
     }
   }
 
@@ -357,9 +397,9 @@ export class Board {
     const move = cancelled ? null : d.target;
     if (move) { this.ctl.perform(move); return; }              // controller emits -> render()
     // no legal drop: glide the cards back, then redraw
-    const slow = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const slow = !!motionScale();
     if (slow) d.items.forEach((c) => { c.classList.add('snap'); c.style.transform = 'translate(0,0) scale(1)'; });
-    setTimeout(() => { this.render(); }, slow ? 230 : 0);
+    setTimeout(() => { this.render(); }, slow ? MOTION.snap + 10 : 0);
   }
 
   endDragVisuals() {

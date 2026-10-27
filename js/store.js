@@ -270,7 +270,7 @@ export class GameController {
       const m = nextFoundationMove(this.state);
       if (!m) break;
       this.perform(m, { critique: false });
-      await new Promise((r) => setTimeout(r, 90));
+      await new Promise((r) => setTimeout(r, 105));      // the auto-finish cascade: one card every beat
     }
     this.isAutoFinishing = false; this.emit();
   }
