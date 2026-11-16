@@ -1,4 +1,4 @@
-"""Change 1: the coach only says 'Lazy move' for a concrete cost, uses 'Tip' for a skipped free move,
+"""Change 1: the coach only says 'You might have missed a move?' for a concrete cost, uses 'Tip' for a skipped free move,
 and does not repeat the same kind of banner within a few moves (it is still counted)."""
 from playwright.sync_api import sync_playwright
 import sys

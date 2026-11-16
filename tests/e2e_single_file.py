@@ -50,7 +50,7 @@ with sync_playwright() as p:
 
     # sounds decode from the embedded data
     page.locator(".pile.stock .card").first.tap()
-    page.wait_for_function("kittycat.fx.ready && Object.keys(kittycat.fx.buffers).length === 4", timeout=30000)
+    page.wait_for_function("kittycat.fx.ready && Object.keys(kittycat.fx.buffers).length === 6", timeout=30000)
     page.wait_for_timeout(1500)
     print("embedded sounds decoded:", page.evaluate("Object.fromEntries(Object.entries(kittycat.fx.buffers).map(([k,v]) => [k, v.length]))"))
     page.evaluate("kittycat.settings.set('musicOn', true)"); page.wait_for_timeout(2500)

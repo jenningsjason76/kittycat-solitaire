@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>KittyCat Solitaire</title>
-  <meta name="description" content="A quiet solitaire that tells you when you make a lazy move.">
+  <meta name="description" content="A quiet solitaire that tells you when you might have missed a move.">
   <meta name="theme-color" content="#A8C3B0">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,7 +24,8 @@
       <span class="spacer"></span>
       <div id="status" aria-live="polite"></div>
     </header>
-    <main id="boardWrap"><div id="board" class="board"></div></main>
+    <main id="boardWrap"><div id="board" class="board" role="application" aria-label="Solitaire table" aria-roledescription="card table"></div></main>
+    <div id="sr" class="sr-only" aria-live="polite" aria-atomic="true"></div>
   </div>
   <div id="menu" hidden role="menu"></div>
   <div id="banner" hidden></div>

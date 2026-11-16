@@ -24,12 +24,15 @@ with sync_playwright() as p:
     moves = legal(page)
     print("tableau moves available:", len(moves))
     m = moves[0] if moves else None
-    if not m:
-        # draw until one exists
+    for _ in range(8):                          # a random deal may have no column-to-column move: draw, then try a new deal
+        if m: break
         for _ in range(10):
             page.evaluate("async () => { const E = await import('./js/engine.js'); kittycat.ctl.perform(E.DRAW); }")
             moves = legal(page)
             if moves: m = moves[0]; break
+        if not m:
+            page.evaluate("kittycat.ctl.newGame()"); page.wait_for_function("!kittycat.ctl.isDealing", timeout=30000); page.wait_for_timeout(900)
+            moves = legal(page); m = moves[0] if moves else None
     print("drag move:", m)
     src = page.locator(f'.pile[data-pile="t{m[1]}"] .card[data-count="{m[4]}"]')
     sb = src.bounding_box()

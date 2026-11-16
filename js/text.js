@@ -8,10 +8,10 @@ export const TITLES = {
 };
 
 const DIRECT = {
-  stockCycling: 'Lazy move. You drew a card when a better move was on the table.',
-  earlyFoundation: 'Lazy move. That card was your only landing spot for a move that turns over a hidden card.',
-  wastedKing: 'Lazy move. That empty column should go to a King that uncovers hidden cards.',
-  missedReveal: 'Lazy move. You skipped a move that reveals a hidden card.',
+  stockCycling: 'You might have missed a move? You drew a card when a better move was on the table.',
+  earlyFoundation: 'You might have missed a move? That card was your only landing spot for a move that turns over a hidden card.',
+  wastedKing: 'You might have missed a move? That empty column could go to a King that uncovers hidden cards.',
+  missedReveal: 'You might have missed a move? There was a move that reveals a hidden card.',
   costGame: 'That move made this deal unwinnable.',
 };
 const GENTLE = {

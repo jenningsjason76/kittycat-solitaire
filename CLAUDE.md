@@ -21,7 +21,7 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 
 ## Decisions (do not reopen without a reason)
 - Klondike only. Drag to move; tap-to-move is a setting, off by default. Tapping the stock always draws.
-- "Lazy move" only for a concrete cost: skipped reveal when drawing, early foundation that loses the only card-turning move, wasted king, missed reveal, or a move that made the deal unwinnable. "Tip" for skipping a free foundation card. The same kind of note is not repeated within 6 moves.
+- The coach says "You might have missed a move?" (the player's wording; it was "Lazy move" until Nov 2026; code still calls it `lazy`) only for a concrete cost: skipped reveal when drawing, early foundation that loses the only card-turning move, wasted king, missed reveal, or a move that made the deal unwinnable. "Tip" for skipping a free foundation card. The same kind of note is not repeated within 6 moves.
 - Undo: flagged moves, plus any move for 6 seconds. "Unlimited" is a setting.
 - Dead end: after two stock passes with no board change, ask the solver (budget 120000 nodes draw 1, 50000 draw 3). Show "No win from here" only on proof.
 - Cat appears on win and end cards by default. No on-table companion by default, no paw badge cue.

@@ -52,6 +52,7 @@ with sync_playwright() as p:
     ctx2 = b.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce"); pg2 = ctx2.new_page()
     pg2.goto(URL); pg2.wait_for_function("document.documentElement.dataset.ready === 'true'", timeout=30000); pg2.wait_for_function("!kittycat.ctl.isDealing", timeout=30000); pg2.wait_for_timeout(300)
     pg2.evaluate(CRAFT); pg2.wait_for_timeout(300); pg2.evaluate(MOVE); pg2.wait_for_timeout(30)
-    print("6. Reduce Motion on: animations:", pg2.evaluate(cardAnims), "(should be 0)")
+    moving = "document.getAnimations().filter(a => a.effect && a.effect.target && a.effect.target.classList && a.effect.target.classList.contains('card') && a.effect.getKeyframes().some(k => k.transform && k.transform !== 'none')).length"
+    print("6. Reduce Motion on: moving animations:", pg2.evaluate(moving), "(should be 0) | fades:", pg2.evaluate(cardAnims), "(at least 1)")
     print("errors:", errors)
     b.close()

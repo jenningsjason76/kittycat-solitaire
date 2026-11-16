@@ -100,7 +100,7 @@ function winCard(box) {
   const n = ctl.lazyCount, tips = ctl.tipCount, avg = stats.recentLazyAverage;
   box.append(mk('h2', '', 'Well played.'), mk('div', 'big', statusText()));
   if (settings.get('feedbackOn')) {
-    const line = (n === 0 ? 'No lazy moves' : n === 1 ? '1 lazy move' : `${n} lazy moves`) + (tips ? ` · ${tips} tip${tips === 1 ? '' : 's'}` : '') + (avg != null ? ` · recent average ${avg.toFixed(1)}` : '');
+    const line = (n === 0 ? 'No missed moves' : n === 1 ? '1 missed move' : `${n} missed moves`) + (tips ? ` · ${tips} tip${tips === 1 ? '' : 's'}` : '') + (avg != null ? ` · recent average ${avg.toFixed(1)}` : '');
     box.append(mk('div', 'muted', line));
   }
   const days = Math.max(stats.currentDayStreak, 1), trail = mk('div', 'trail');
@@ -160,7 +160,13 @@ function renderOverlay() {
   updateCat();
 }
 
-ctl.subscribe(() => { renderBar(); renderBanner(); renderOverlay(); updateCat(); });
+let lastSaid = '';
+function announce() {                                  // one short sentence per move, for VoiceOver
+  const a = ctl.announcement; if (!a || a === lastSaid) return;
+  lastSaid = a; ctl.announcement = null;
+  const r = $('sr'); r.textContent = ''; setTimeout(() => { r.textContent = a; }, 30);
+}
+ctl.subscribe(() => { renderBar(); renderBanner(); renderOverlay(); updateCat(); announce(); });
 stats.onChange(renderBar);
 settings.onChange(() => { renderBar(); renderBanner(); });
 renderBar();

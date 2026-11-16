@@ -311,6 +311,17 @@ export function boardKey(s) {
 }
 
 /** Plain-English description of a move. Call on the position BEFORE the move. */
+/** The same move in words for VoiceOver: full card names, no suit symbols. */
+export function speak(s, m) {
+  if (m[0] === K.STOCK) return s.stock.length ? 'Drew a card.' : 'Turned the waste over.';
+  const run = cardsFrom(s, m[0], m[1], m[4]);
+  if (!run) return '';
+  const what = cardName(run[0]) + (m[4] > 1 ? ` and ${m[4] - 1} more` : '');
+  if (m[2] === K.FOUND) return `${what} to the foundation.`;
+  const col = s.tab[m[3]];
+  return col.length ? `${what} onto the ${cardName(col[col.length - 1])}.` : `${what} to an empty column.`;
+}
+
 export function describe(s, m) {
   if (m[0] === K.STOCK) return 'draw from the stock';
   const run = cardsFrom(s, m[0], m[1], m[4]);

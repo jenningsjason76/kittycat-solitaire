@@ -2,7 +2,7 @@
 import {
   K, DRAW, isUp, cardName, legalMoves, bestMove, canDraw, SUIT_SYMBOL, moveEq,
 } from './engine.js';
-import { settings, CARD_SCALE, motionScale } from './settings.js';
+import { settings, CARD_SCALE, motionScale, reducedMotion } from './settings.js';
 import { faceURL } from './decks.js';
 import { catHTML } from './cat.js';
 
@@ -91,14 +91,29 @@ export class Board {
     const w = wrap.clientWidth, h = wrap.clientHeight;
     if (!w || !h) return;
     const margin = 8, gap = 6, aspect = 1.5;
-    let cw = (w - margin * 2 - gap * 6) / 7;
-    let ch = cw * aspect;
-    const maxH = h / 3.8;                       // keeps landscape phones usable
-    if (ch > maxH) { ch = maxH; cw = ch / aspect; }
-    cw = Math.min(cw, 140) * (CARD_SCALE[settings.get('cardSize')] || 1);
-    ch = cw * aspect;
-    const tabh = Math.max(h - margin * 2 - gap - ch, ch);
-    this.L = { cw, ch, gap, margin, tabh };
+    // A phone on its side: stock and waste go to a left rail and the foundations to a right rail (2 x 2),
+    // so the tableau gets the full height. Everything else keeps the usual two rows.
+    const side = h < 560 && w > h * 1.45;
+    let cw, ch, tabh;
+    if (side) {
+      cw = (w - margin * 2 - gap * 9 - gap * 4) / 10;            // 1 + 7 + 2 columns, wider gaps beside the rails
+      ch = cw * aspect;
+      const maxH = (h - margin * 2 - gap) / 2.36;                // stock over a waste that can fan three cards down
+      if (ch > maxH) { ch = maxH; cw = ch / aspect; }
+      cw = Math.min(cw, 140) * (CARD_SCALE[settings.get('cardSize')] || 1);
+      ch = cw * aspect;
+      tabh = Math.max(h - margin * 2, ch);
+    } else {
+      cw = (w - margin * 2 - gap * 6) / 7;
+      ch = cw * aspect;
+      const maxH = h / 3.8;
+      if (ch > maxH) { ch = maxH; cw = ch / aspect; }
+      cw = Math.min(cw, 140) * (CARD_SCALE[settings.get('cardSize')] || 1);
+      ch = cw * aspect;
+      tabh = Math.max(h - margin * 2 - gap - ch, ch);
+    }
+    this.root.classList.toggle('side', side);
+    this.L = { cw, ch, gap, margin, tabh, side };
     const s = this.root.style;
     s.setProperty('--cw', cw + 'px'); s.setProperty('--ch', ch + 'px');
     s.setProperty('--gap', gap + 'px'); s.setProperty('--margin', margin + 'px'); s.setProperty('--tabh', tabh + 'px');
@@ -183,7 +198,7 @@ export class Board {
     shown.forEach((c, i) => {
       const top = i === shown.length - 1;
       const e = this.makeCard(c, 'w', 1, 0, top);
-      e.style.transform = `translate(${i * this.L.cw * 0.28}px, 0)`;
+      e.style.transform = this.L.side ? `translate(0, ${i * this.L.ch * 0.18}px)` : `translate(${i * this.L.cw * 0.28}px, 0)`;
       waste.appendChild(e);
     });
 
@@ -202,6 +217,7 @@ export class Board {
       cards.forEach((c, k) => p.appendChild(this.makeCard(c, 't' + i, cards.length - k, ys[k])));
     }
 
+    this.labelPiles(st);
     const perch = this.spacer.querySelector('.cat-perch');
     if (perch) perch.dataset.draw = String(st.draw);
 
@@ -222,6 +238,19 @@ export class Board {
     requestAnimationFrame(() => this.root.classList.remove('no-trans'));
   }
 
+  /** VoiceOver context: what each pile holds, read before the cards in it. */
+  labelPiles(st) {
+    const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+    const lab = (key, text) => { const p = this.piles[key]; p.setAttribute('role', 'group'); p.setAttribute('aria-label', text); };
+    lab('s', st.stock.length ? `Stock, ${n(st.stock.length, 'card', 'cards')}` : 'Stock, empty');
+    lab('w', st.waste.length ? `Waste, top card ${cardName(st.waste[st.waste.length - 1])}` : 'Waste, empty');
+    for (let i = 0; i < 4; i++) lab('f' + i, `${['Clubs', 'Diamonds', 'Hearts', 'Spades'][i]} foundation, ${st.found[i] ? 'up to ' + ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'][st.found[i] - 1] : 'empty'}`);
+    for (let i = 0; i < 7; i++) {
+      const col = st.tab[i], hidden = col.filter((c) => !isUp(c)).length;
+      lab('t' + i, `Column ${i + 1}, ` + (col.length ? (hidden ? `${n(hidden, 'hidden card', 'hidden cards')}, ` : '') + `${n(col.length - hidden, 'card', 'cards')} showing` : 'empty'));
+    }
+  }
+
   // ---------- motion ----------
 
   afterRender(prev) {
@@ -234,11 +263,24 @@ export class Board {
     }
     if (last && last[2] === K.FOUND) this.pulse('f' + last[3]);
     const moving = !this.noAnim && scale;
+    if (!this.noAnim && !scale && reducedMotion() && settings.get('motion') !== 'off') this.dissolve(prev, last);
     // the sound of the move lands with the card: a draw starts as the card leaves, a card set down sounds at the settle
     const land = moving ? MOTION.flight.dur * scale * MOTION.settle.at : 0;
     this.cascade = this.ctl.isAutoFinishing ? (this.cascade || 0) + 1 : 0;
     this.ctl.fx.claim({ draw: 0, place: land, foundation: land }, { rate: this.cascade ? Math.min(1.5, 1 + this.cascade * 0.025) : 1 });
     if (moving) this.flight(prev, last, scale);
+  }
+
+  /** Reduce Motion: nothing moves. A card that changed place or turned over fades in where it lands, and the pile it
+   *  left glows briefly, so the move is still easy to follow (Apple suggests dissolves and highlight fades). */
+  dissolve(prev, last) {
+    this.root.querySelectorAll('.card[data-id]').forEach((c) => {
+      const p = prev.cards.get(c.dataset.id); if (!p) return;
+      const r = c.getBoundingClientRect();
+      const moved = Math.abs(p.x - r.left) + Math.abs(p.y - r.top) > 1.5, turned = !p.up && c.classList.contains('up');
+      if (moved || turned) c.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: turned ? 260 : 200, easing: 'ease-out' });
+    });
+    if (last && last[0] !== K.STOCK) { const src = this.piles[keyOf(last[0], last[1])]; if (src) { src.classList.remove('left'); void src.offsetWidth; src.classList.add('left'); setTimeout(() => src.classList.remove('left'), 600); } }
   }
 
   /** Keeps a moving card above its neighbours while it travels. */

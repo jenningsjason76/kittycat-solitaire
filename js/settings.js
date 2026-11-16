@@ -8,6 +8,7 @@ export const DEFAULTS = {
   soundsOn: true, effectsOn: true, effectsLevel: 'subtle', musicOn: false, musicLevel: 'subtle',
   hapticLevel: 'subtle',
   deck: 'classic',
+  textSize: 'standard',
 };
 
 const KEY = 'kittycat.settings.v1';
@@ -76,6 +77,7 @@ export function apply() {
     root.style.setProperty('--back-img', `url("${u.startsWith('data:') ? u : new URL(u, document.baseURI).href}")`);
   }
   root.dataset.size = values.cardSize;
+  root.dataset.text = values.textSize;
   root.dataset.zoom = values.zoomEffect && !reducedMotion() ? 'on' : 'off';
   root.dataset.light = values.light === 'day' ? 'day' : values.light === 'evening' ? 'dusk' : lightPhase();
   const meta = document.querySelector('meta[name="theme-color"]');

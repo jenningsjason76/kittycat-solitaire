@@ -417,3 +417,56 @@ dialog h3 { font-family: var(--font-head); font-weight: 600; font-size: 14px; te
 .deck-card:nth-child(2) { left: 36px; top: 2px; z-index: 1; }
 .deck-card:nth-child(3) { left: 68px; transform: rotate(9deg); }
 .deck-card-css { background-color: #3F5F7A; background-image: url("../cards/card_back_blue.webp"); background-size: 100% 100%; }
+
+/* ---------- landscape phone: rails beside the tableau (board.side, set by relayout) ---------- */
+.board.side { display: grid; justify-content: center; align-content: start;
+  grid-template-columns: var(--cw) repeat(7, var(--cw)) var(--cw) var(--cw);
+  grid-template-rows: var(--ch) calc(var(--tabh) - var(--ch) - var(--gap));
+  column-gap: var(--gap); row-gap: var(--gap); }
+.board.side .toprow, .board.side .tabrow { display: contents; }
+.board.side .pile { grid-row: 1; }
+.board.side .pile.stock { grid-column: 1; margin-right: calc(var(--gap) * 2); }
+.board.side .pile.waste { grid-column: 1; grid-row: 2; margin-right: calc(var(--gap) * 2); height: var(--ch); }
+.board.side .pile.tab { grid-row: 1 / span 2; height: var(--tabh); }
+.board.side .pile[data-pile="t0"] { grid-column: 2; } .board.side .pile[data-pile="t1"] { grid-column: 3; }
+.board.side .pile[data-pile="t2"] { grid-column: 4; } .board.side .pile[data-pile="t3"] { grid-column: 5; }
+.board.side .pile[data-pile="t4"] { grid-column: 6; } .board.side .pile[data-pile="t5"] { grid-column: 7; }
+.board.side .pile[data-pile="t6"] { grid-column: 8; }
+.board.side .pile[data-pile="f0"] { grid-column: 9; grid-row: 1; margin-left: calc(var(--gap) * 2); }
+.board.side .pile[data-pile="f1"] { grid-column: 10; grid-row: 1; }
+.board.side .pile[data-pile="f2"] { grid-column: 9; grid-row: 2; margin-left: calc(var(--gap) * 2); height: var(--ch); }
+.board.side .pile[data-pile="f3"] { grid-column: 10; grid-row: 2; height: var(--ch); }
+.board.side .pile.spacer { display: none; }                 /* no perch for the cat in landscape */
+.board.side .pile.waste, .board.side .pile.found, .board.side .pile.stock { z-index: 3; }
+
+/* ---------- accessibility ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* Reduce Motion keeps the gentle signals: the foundation glow and a fade on the pile a card left */
+@media (prefers-reduced-motion: reduce) { .pile.found.land .slot { animation: land .5s ease-out; } }
+.pile.left .slot, .pile.left > .card:last-of-type { animation: left-glow .6s ease-out; }
+@keyframes left-glow { 0% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--hl) 70%, transparent), var(--shadow-card); } 100% { box-shadow: 0 0 0 2px transparent, var(--shadow-card); } }
+/* Text size (Settings > Appearance): scales the bar, the coach's note, menus, dialogs and end cards; the cards have their own size setting.
+   WebKit advises an in-app control rather than the old -apple-system-body font for web pages. */
+:root { --text-scale: 1; }
+:root[data-text="large"] { --text-scale: 1.15; }
+:root[data-text="larger"] { --text-scale: 1.32; }
+#topbar, #banner .box, #menu, dialog, #overlay .box, #toast { zoom: var(--text-scale); }
+
+#banner .btn { white-space: nowrap; }
+
+/* ---------- victory backdrops, one per drawn deck (victory.js backdrop) ---------- */
+.v-backdrop { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.v-thorn { background: radial-gradient(120% 90% at 50% 0%, rgba(30, 18, 44, .55), rgba(10, 6, 18, .25) 70%, transparent); }
+.v-moon { position: absolute; left: 0; top: 0; width: 22vmin; height: 22vmin; border-radius: 50%;
+  box-shadow: inset -5.5vmin 2vmin 0 0 #E0C27A; filter: drop-shadow(0 0 3vmin rgba(224, 194, 122, .55)); }
+.v-star { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #F1E3B8; box-shadow: 0 0 6px 1px rgba(241, 227, 184, .8); opacity: 0; }
+.v-ice { background: linear-gradient(to bottom, rgba(8, 14, 30, .45), rgba(8, 14, 30, .1) 60%, transparent); }
+.v-beam { position: absolute; top: -10%; width: 26vmin; height: 130%; margin-left: -13vmin; transform-origin: 50% 0;
+  background: linear-gradient(to bottom, rgba(220, 235, 255, .35), rgba(220, 235, 255, 0) 80%); filter: blur(6px); }
+.v-goal { position: absolute; left: 0; right: 0; top: 0; height: 18vh; opacity: 0;
+  background: radial-gradient(60% 100% at 50% 0%, rgba(230, 50, 46, .55), transparent 70%); }
+.v-room { background: radial-gradient(90% 70% at 20% 10%, rgba(255, 214, 140, .22), transparent 60%), linear-gradient(rgba(20, 10, 6, .3), rgba(20, 10, 6, .15)); }
+.v-lamp { position: absolute; left: -20vmax; top: -30vmax; width: 80vmax; height: 80vmax; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 220, 150, .45), rgba(255, 200, 120, .12) 45%, transparent 70%); transform-origin: 30% 30%; }
+.v-mote { position: absolute; left: 0; top: 0; width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 230, 180, .9); opacity: 0; }
+#victory .vcard { z-index: 1; }

@@ -101,6 +101,7 @@ export function openSettings(ctx) {
     selectRow(s, 'Motion', 'motion', [['calm', 'Calm'], ['lively', 'Lively'], ['off', 'Off']]);
     selectRow(s, 'Victory', 'victory', [['random', 'Random'], ['fan', 'Fan and bow'], ['cascade', 'Soft cascade'], ['cat', 'Cat swats the kings'], ['riffle', 'Riffle'], ['off', 'None']]);
     selectRow(s, 'Card size', 'cardSize', [['large', 'Large'], ['medium', 'Medium'], ['small', 'Small']]);
+    selectRow(s, 'Text size', 'textSize', [['standard', 'Standard'], ['large', 'Large'], ['larger', 'Larger']]);
     const deckRow = h('div', 'row-item'); deckRow.append(h('span', '', 'Deck'));
     const deckBtn = h('button', 'btn', DECKS[settings.get('deck')] ? DECKS[settings.get('deck')].name : 'Classic'); deckBtn.type = 'button';
     deckBtn.onclick = () => openDeckPicker(ctx, { back: rebuild }); deckRow.append(deckBtn); s.append(deckRow);
@@ -110,7 +111,7 @@ export function openSettings(ctx) {
     if (classic) selectRow(s, 'Card back', 'cardBack', [['blue', 'Blue'], ['red', 'Red'], ['purple', 'Purple'], ['yellow', 'Gold'], ['paws', 'Cat paws']]);
     else s.append(h('p', 'note', 'This deck brings its own table and card back, in light and dark.'));
     toggleRow(s, 'Zoom effect', 'zoomEffect');
-    s.append(h('p', 'note', 'The zoom effect is turned off automatically when Reduce Motion is on.'));
+    s.append(h('p', 'note', 'With Reduce Motion on (iPhone Settings > Accessibility > Motion), cards fade into place instead of moving, and the zoom effect is off.'));
 
     s = section(body, 'Sound and haptics');
     const on = settings.get('soundsOn');
@@ -236,7 +237,7 @@ function chart(records) {
   const bw = W / n;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('class', 'chart'); svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'Lazy moves in your last games');
+  svg.setAttribute('aria-label', 'Missed moves in your last games');
   records.forEach((r, i) => {
     const bh = (r.lazyMoves / max) * (H - 8);
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -260,8 +261,8 @@ export function openStats(ctx) {
     kv(s, 'Days in a row', st.currentDayStreak); kv(s, 'Best days in a row', st.bestDayStreak);
     kv(s, 'Wins in a row', st.currentWinStreak); kv(s, 'Best wins in a row', st.bestWinStreak);
 
-    s = section(body, 'Lazy moves per game');
-    if (!st.lazyChartRecords.length) s.append(h('p', 'note', 'Play with feedback on to track lazy moves.'));
+    s = section(body, 'Missed moves per game');
+    if (!st.lazyChartRecords.length) s.append(h('p', 'note', 'Play with feedback on to track missed moves.'));
     else {
       kv(s, 'Last 10 games (average)', dec(st.recentLazyAverage));
       if (st.earlierLazyAverage !== null) kv(s, '10 games before that', dec(st.earlierLazyAverage));
@@ -274,7 +275,7 @@ export function openStats(ctx) {
       const row = h('div', 'hist'), top = h('div', 't');
       top.append(h('span', '', r.won ? 'Won' : 'Not finished'), h('span', 'd', new Date(r.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })));
       const parts = [`Draw ${r.drawMode}`, r.scoring === 'none' ? 'No scoring' : r.scoring[0].toUpperCase() + r.scoring.slice(1), `${r.moves} moves`];
-      if (r.feedbackWasOn) parts.push(`${r.lazyMoves} lazy`);
+      if (r.feedbackWasOn) parts.push(`${r.lazyMoves} missed`);
       row.append(top, h('div', 'd', parts.join(' · ')));
       s.append(row);
     }
@@ -291,11 +292,11 @@ export function openSummary(ctx) {
   open(ctl.state.found.every((f) => f === 13) ? 'You won' : 'Game summary', (body) => {
     const log = ctl.feedbackLog;
     let s = section(body, 'This game');
-    kv(s, 'Moves', ctl.state.moves); kv(s, 'Lazy moves flagged', ctl.lazyCount);
+    kv(s, 'Moves', ctl.state.moves); kv(s, 'Missed moves noted', ctl.lazyCount);
     if (ctl.tipCount) kv(s, 'Tips', ctl.tipCount);
     kv(s, 'Flagged moves you undid', log.filter((e) => e.undone).length);
     kv(s, 'Moves that cost the game', log.filter((e) => e.costGame).length);
-    if (!log.length) { body.append(h('p', '', 'No lazy moves. Nicely played.')); return; }
+    if (!log.length) { body.append(h('p', '', 'No missed moves. Nicely played.')); return; }
     const toggle = h('button', 'btn', 'See details');
     const list = h('div'); list.hidden = true;
     toggle.onclick = () => { list.hidden = !list.hidden; toggle.textContent = list.hidden ? 'See details' : 'Hide details'; };

@@ -51,7 +51,7 @@ function fan(board, layer, k) {
     go(c.el, [pose(tx - c.x0, ty - c.y0, a * 180 / Math.PI), pose(mx - c.x0, my - c.y0, 0)], { duration: 600 * k, delay: (1500 + c.s * 60 + c.rank * 8) * k, easing: 'cubic-bezier(.5,0,.2,1)', fill: 'forwards' });
   });
   const top = cards[cards.length - 1].el;
-  go(top, [{ boxShadow: '0 0 0 0 rgba(227,176,75,.0)' }, { boxShadow: '0 0 0 18px rgba(227,176,75,.55)' }, { boxShadow: '0 0 28px 6px rgba(227,176,75,.0)' }], { duration: 800 * k, delay: 2650 * k, easing: 'ease-out' });
+  go(top, [{ boxShadow: '0 0 0 0 color-mix(in srgb, var(--hl) 0%, transparent)' }, { boxShadow: '0 0 0 18px color-mix(in srgb, var(--hl) 55%, transparent)' }, { boxShadow: '0 0 28px 6px color-mix(in srgb, var(--hl) 0%, transparent)' }], { duration: 800 * k, delay: 2650 * k, easing: 'ease-out' });
   return 3500 * k;
 }
 
@@ -104,11 +104,48 @@ function riffle(board, layer, k) {
     const mx = W / 2 - cw / 2, my = H * 0.46 - ch / 2 - i * 0.4;
     go(c.el, [pose(tx - c.x0, ty - c.y0, th * 180 / Math.PI + 90), pose(mx - c.x0, my - c.y0, 0)], { duration: 560 * k, delay: (1500 + (n - i) * 9) * k, easing: 'cubic-bezier(.5,0,.2,1)' });
   });
-  go(order[n - 1].el, [{ boxShadow: '0 0 0 0 rgba(227,176,75,0)' }, { boxShadow: '0 0 0 20px rgba(227,176,75,.5)' }, { boxShadow: '0 0 30px 8px rgba(227,176,75,0)' }], { duration: 800 * k, delay: 2500 * k, easing: 'ease-out' });
+  go(order[n - 1].el, [{ boxShadow: '0 0 0 0 color-mix(in srgb, var(--hl) 0%, transparent)' }, { boxShadow: '0 0 0 20px color-mix(in srgb, var(--hl) 50%, transparent)' }, { boxShadow: '0 0 30px 8px color-mix(in srgb, var(--hl) 0%, transparent)' }], { duration: 800 * k, delay: 2500 * k, easing: 'ease-out' });
   return 3400 * k;
 }
 
 const RUN = { fan, cascade, cat, riffle };
+
+// The deck's world behind the cards: a moon over the night court, arena lights and the goal light, the lamp and its dust.
+// Drawn first so the cards fly over it; it fades in and out with the sequence. Classic keeps the plain felt.
+function backdrop(layer, deck, k, ms) {
+  if (deck === 'classic') return;
+  const W = innerWidth, H = innerHeight, d = document.createElement('div');
+  d.className = 'v-backdrop v-' + deck;
+  layer.appendChild(d);
+  go(d, [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }], { duration: ms, easing: 'ease-in-out' });
+  const rnd = ((seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; })(11);
+  if (deck === 'thorn') {
+    const moon = document.createElement('div'); moon.className = 'v-moon'; d.appendChild(moon);
+    go(moon, [{ transform: `translate(${W * 0.18}px, ${H * 0.55}px) scale(.8)` }, { transform: `translate(${W * 0.05}px, ${H * 0.04}px) scale(1)` }], { duration: ms * 0.9, easing: 'cubic-bezier(.2,.7,.3,1)' });
+    for (let i = 0; i < 34; i++) {
+      const st = document.createElement('i'); st.className = 'v-star';
+      st.style.left = (rnd() * 100) + '%'; st.style.top = (rnd() * 70) + '%'; st.style.transform = `scale(${0.5 + rnd()})`;
+      d.appendChild(st);
+      go(st, [{ opacity: 0 }, { opacity: 0.9 }, { opacity: 0.25 }, { opacity: 0.9 }, { opacity: 0 }], { duration: 1600 * k, delay: rnd() * ms * 0.7, iterations: 2, easing: 'ease-in-out', fill: 'none' });
+    }
+  } else if (deck === 'ice') {
+    for (const [x, dir] of [[0.15, 1], [0.85, -1]]) {
+      const beam = document.createElement('div'); beam.className = 'v-beam'; beam.style.left = (x * 100) + '%'; d.appendChild(beam);
+      go(beam, [{ transform: `rotate(${-24 * dir}deg)` }, { transform: `rotate(${24 * dir}deg)` }, { transform: `rotate(${-10 * dir}deg)` }], { duration: ms, easing: 'ease-in-out' });
+    }
+    const goal = document.createElement('div'); goal.className = 'v-goal'; d.appendChild(goal);
+    go(goal, [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.3 }, { opacity: 1 }, { opacity: 0.3 }, { opacity: 1 }, { opacity: 0 }], { duration: Math.min(ms, 2600 * k), delay: 300 * k, easing: 'ease-in-out' });
+  } else if (deck === 'room') {
+    const lamp = document.createElement('div'); lamp.className = 'v-lamp'; d.appendChild(lamp);
+    go(lamp, [{ opacity: 0.4, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1.05)' }, { opacity: 0.8, transform: 'scale(1)' }], { duration: ms, easing: 'ease-out' });
+    for (let i = 0; i < 26; i++) {
+      const m = document.createElement('i'); m.className = 'v-mote'; d.appendChild(m);
+      const x = W * (0.1 + rnd() * 0.5), y = H * (0.3 + rnd() * 0.6);
+      go(m, [{ transform: `translate(${x}px, ${y}px)`, opacity: 0 }, { opacity: 0.8, offset: 0.3 }, { transform: `translate(${x + (rnd() - 0.3) * 80}px, ${y - 60 - rnd() * 120}px)`, opacity: 0 }],
+        { duration: ms * (0.6 + rnd() * 0.4), delay: rnd() * ms * 0.3, easing: 'ease-out' });
+    }
+  }
+}
 
 /** Plays one victory sequence. Resolves when it ends or is skipped. Use style to force one (tests). */
 export async function playVictory(board, style) {
@@ -133,6 +170,9 @@ export async function playVictory(board, style) {
     finish();
   };
   layer.addEventListener('pointerdown', end);
+  const deck = document.documentElement.dataset.deck || 'classic';
+  const est = { fan: 3500, cascade: 4250, cat: 4300, riffle: 3400 }[style] * k;
+  backdrop(layer, deck, k, Math.min(est, 4500 * k));
   const ms = Math.min(RUN[style](board, layer, k), 4500 * k);
   await Promise.race([sleep(ms + 250), done]);
   end();

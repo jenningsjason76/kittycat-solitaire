@@ -1,6 +1,6 @@
 // Game controller: current game, undo history, feedback log, autosave and solver bookkeeping.
 import {
-  K, DRAW, apply, isWon, newGame, randomSeed, legalMoves, describe, moveEq, canAutoFinish, nextFoundationMove, boardKey,
+  K, DRAW, apply, isWon, newGame, randomSeed, legalMoves, describe, speak, moveEq, canAutoFinish, nextFoundationMove, boardKey,
 } from './engine.js';
 import { critique } from './critic.js';
 import { kvGet, kvSet, kvDel } from './storage.js';
@@ -207,6 +207,7 @@ export class GameController {
 
     this.history.push({ state: before, winnability: priorWin, line: priorLine });
     this.lastMove = move;
+    this.announcement = speak(before, move);            // spoken by VoiceOver through the live region in main.js
     this.outOfMoves = false;
     this.serials.push(serial);
     this.moveTimes.push(Date.now());
