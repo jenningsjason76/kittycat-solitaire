@@ -1,5 +1,5 @@
 // Service worker: makes the game work offline. Bump VERSION when you publish changes.
-const VERSION = 'v20261027225354';
+const VERSION = 'v20261116033144';
 const CORE = `kittycat-core-${VERSION}`;
 const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
 const DECKS = ['thorn', 'ice', 'room'];      // the drawn SVG decks (cards/<deck>/), see js/decks.js
