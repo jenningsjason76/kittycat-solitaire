@@ -7,3 +7,6 @@ __pycache__/
 .claude/settings.local.json
 CLAUDE.local.md
 .venv/
+apple/mac/KittyCat/Web/index.html
+apple/mac/KittyCat.xcodeproj/
+apple/mac/build/

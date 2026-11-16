@@ -8,6 +8,7 @@ A Klondike solitaire PWA. Plain ES modules: no build step, no dependencies. GitH
 - `python3 -m http.server 8765`, then open http://127.0.0.1:8765/ to play.
 - `./tools/publish.sh "message"`: runs the rules tests, stamps a new version in `sw.js`, commits and pushes. Only when I ask.
 - `python3 tools/build_single.py [--hosted]`: optional one-file builds into `dist/` and `dist-hosted/` (git-ignored).
+- Mac app: `apple/mac/` (XcodeGen + SwiftUI + WKWebView around the one-file build). GitHub Actions builds it on every relevant push and uploads to TestFlight on demand; see `docs/MAC_TESTFLIGHT.md`. The menu bar calls `window.kittycat.ui` (main.js): keep those names.
 - `python3 tools/cards/make_svg_decks.py`: redraws the three vector decks into `cards/thorn|ice|room/` (needs `pip install fonttools`; the fonts it reads are listed at the top of the script).
 
 ## Layout (`js/`)

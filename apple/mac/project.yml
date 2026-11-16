@@ -1,0 +1,47 @@
+# XcodeGen spec for the Mac app (https://github.com/yonaskolb/XcodeGen).
+#   sh apple/mac/scripts/bundle-web.sh      # puts the one-file game in KittyCat/Web/index.html
+#   cd apple/mac && xcodegen generate       # writes KittyCat.xcodeproj (not committed)
+# Set DEVELOPMENT_TEAM below (or pass it to xcodebuild) to sign. See docs/MAC_TESTFLIGHT.md.
+name: KittyCat
+options:
+  bundleIdPrefix: com.jenningsjason76
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  KittyCat:
+    type: application
+    platform: macOS
+    sources:
+      - path: KittyCat
+        excludes:
+          - "Web/**"
+      - path: KittyCat/Web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jenningsjason76.kittycat-solitaire
+        PRODUCT_NAME: KittyCat Solitaire
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: KittyCat/KittyCat.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: KittyCat Solitaire
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.card-games
+        INFOPLIST_KEY_NSHumanReadableCopyright: "KittyCat Solitaire. Card art and sounds CC0."
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+schemes:
+  KittyCat:
+    build:
+      targets:
+        KittyCat: all
+    archive:
+      config: Release

@@ -201,6 +201,8 @@ function toggleMenu() {
   m.querySelector('button').focus();
 }
 $('menuBtn').onclick = (e) => { e.stopPropagation(); toggleMenu(); };
+// The Mac app's menu bar calls these (apple/mac): the same actions as the game menu.
+window.kittycat.ui = { newGame: requestNew, movesLeft: () => openMovesCheck(ctx), summary: () => openSummary(ctx), stats: () => openStats(ctx), settings: () => openSettings(ctx) };
 document.addEventListener('click', (e) => { if (!$('menu').hidden && !$('menu').contains(e.target)) $('menu').hidden = true; });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('menu').hidden = true; });
 

@@ -1,0 +1,96 @@
+# Builds the Mac app on a GitHub Mac (Xcode 26, needed for App Store Connect uploads since April 2026).
+# - Every push that touches the game or apple/mac: an unsigned build, to prove it compiles.
+# - Actions tab > "Mac app" > Run workflow > tick "Upload to TestFlight": signs with your App Store Connect API key
+#   and uploads. Needs the four secrets in docs/MAC_TESTFLIGHT.md.
+name: Mac app
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["apple/mac/**", "js/**", "css/**", "cards/**", "sounds/**", "index.html", "tools/build_single.py", ".github/workflows/mac-app.yml"]
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: "Upload to TestFlight"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Xcode 26
+        shell: bash
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+      - name: Tools
+        run: brew install xcodegen
+      - name: Bundle the game
+        run: sh apple/mac/scripts/bundle-web.sh
+      - name: Generate the Xcode project
+        run: cd apple/mac && xcodegen generate
+      - name: Build (unsigned)
+        shell: bash
+        run: |
+          cd apple/mac
+          xcodebuild -project KittyCat.xcodeproj -scheme KittyCat -configuration Release \
+            -destination 'generic/platform=macOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -40
+          ls -la "build/Build/Products/Release/KittyCat Solitaire.app/Contents/Resources/Web"
+
+  testflight:
+    if: github.event_name == 'workflow_dispatch' && inputs.testflight
+    needs: build
+    runs-on: macos-26
+    env:
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Xcode 26
+        shell: bash
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+      - name: Tools and project
+        run: |
+          brew install xcodegen
+          sh apple/mac/scripts/bundle-web.sh
+          cd apple/mac && xcodegen generate
+      - name: App Store Connect key
+        shell: bash
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+      - name: Archive (cloud signing)
+        shell: bash
+        run: |
+          cd apple/mac
+          xcodebuild archive -project KittyCat.xcodeproj -scheme KittyCat -configuration Release \
+            -destination 'generic/platform=macOS' -archivePath build/KittyCat.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -40
+      - name: Export the installer package
+        shell: bash
+        run: |
+          cd apple/mac
+          plutil -replace teamID -string "$TEAM_ID" ExportOptions.plist
+          xcodebuild -exportArchive -archivePath build/KittyCat.xcarchive -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/export -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -40
+          ls -la build/export
+      - name: Upload to TestFlight
+        shell: bash
+        run: |
+          cd apple/mac/build/export
+          PKG=$(ls *.pkg | head -1)
+          xattr -cr "$PKG"                      # Apple refuses uploads that carry the quarantine attribute
+          xcrun altool --upload-app -f "$PKG" -t macos --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"

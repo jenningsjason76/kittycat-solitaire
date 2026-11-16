@@ -27,3 +27,32 @@ Deal-difficulty setting. A "show me a winning move" hint. Daily deal and iCloud 
 
 ## Useful simulations (not in the repo)
 Simulated players (a simple careful bot, a random bot) were used to measure how often the coach fires on winning lines and whether lost games end. They are easy to rebuild from `engine.js`, `solver.js` and `critic.js`.
+
+## Nov 16, 2026
+- Coach wording: "You might have missed a move?" replaces "Lazy move" (her request). The win card, stats and summary say "missed moves". Internal names (`lazyMoves`, severity `lazy`) are unchanged so old stats load.
+- Landscape phones: rails layout (`board.side` when the board is under 560 px tall and 1.45 times wider than tall). Stock and waste on the left, foundations 2 x 2 on the right, tableau full height; draw-3 waste fans down.
+- Accessibility: moves are spoken in full card names (`speak` in engine.js, live region `#sr`); piles are labelled groups; Text size setting (`textSize`: standard, large, larger) scales the bar, notes, menus, dialogs and end cards with CSS zoom; Reduce Motion fades cards in place and glows the pile a card left (`Board.dissolve`). WebKit advises an in-app size control rather than `-apple-system-body`.
+- Victories: a backdrop per drawn deck (`backdrop` in victory.js): moon and stars, arena beams and goal light, lamp and dust. Glows use the deck's `--hl`.
+- Mac app: `apple/mac/` (XcodeGen spec, SwiftUI window, WKWebView serving the one-file build from the bundle at `kittycat://game/`), workflow `.github/workflows/mac-app.yml` (unsigned build on every relevant push; TestFlight upload on demand), guide `docs/MAC_TESTFLIGHT.md`. Not yet run on a real Mac: storage on the custom scheme is the main unknown.
+
+## Numbers to carry into the iPhone app (keep web and iPhone in sync)
+| What | Web value | Where |
+|------|-----------|-------|
+| Fan gaps | 0.42 face up, 0.12 face down, shrink floor 0.2 | `Board.offsets` |
+| Flight | 230 ms, lift 1.05 at 35%, settle 1.02 at 80% | `MOTION` in board.js |
+| Flip | 300 ms, back turns away in the first half | `turnOver` |
+| Stagger, deal | 16 ms; deal 340 ms with 26 ms stagger | `MOTION` |
+| Pick-up, snap back | 120 ms, 240 ms | `MOTION` |
+| Auto-finish beat | 105 ms | `store.js` |
+| Sounds | place and chime at the settle (flight x 0.8), flip at 80% of the half-turn; flip 55% level, chime 80% | `audio.js`, `board.js` |
+| Undo grace, note cooldown | 6 s, 6 moves | `store.js`, `critic.js` |
+| Landscape rails | under 560 tall and 1.45 times wider; ch at most (h - 22) / 2.36 | `relayout` |
+| Text sizes | 1, 1.15, 1.32 | `styles.css` |
+| Coach wording | "You might have missed a move?" | `text.js` |
+
+## How to test on a phone
+1. After `publish.sh`, wait about a minute, then on the iPhone open the home-screen app, leave it and come back: it checks for the update on return. Settings > About > Version must show the stamp `publish.sh` printed.
+2. Check one game in each deck, light and dark (Settings > Appearance > Mode), portrait and landscape.
+3. Sound: Settings > Sound and haptics, Effects volume Subtle. Listen for the paper flip on a reveal and the chime on a foundation.
+4. Accessibility: iPhone Settings > Accessibility > VoiceOver on, then move a card by double-tapping; Reduce Motion on (Accessibility > Motion) and watch cards fade instead of fly; Text size Larger in the game's settings.
+5. Never delete and re-add the home-screen icon to force an update: it can erase saved games and stats.
